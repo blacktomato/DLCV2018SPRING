@@ -4,7 +4,7 @@
  # File Name : eigen_face.py
  # Purpose : Use PCA to analyze the eigen face
  # Creation Date : 廿十八年三月十六日 (週五) 十六時〇分53秒
- # Last Modified : 2018年03月20日 (週二) 17時46分01秒
+ # Last Modified : 2018年03月20日 (週二) 21時50分53秒
  # Created By : SL Chung
 ##############################################################
 import os
@@ -12,6 +12,7 @@ import sys
 import numpy as np
 import cv2
 from sklearn.decomposition import PCA
+from sklearn.neighbors import KNeighborsClassifier
 #path = sys.argv[1]
 path = "../data/hw1_dataset/"
 images = np.ndarray([40, 10, 56, 46, 3])
@@ -46,4 +47,31 @@ for i in n:
     part_es_face[0][0:i] = es_face[0][0:i]
     recover_face = pca.inverse_transform(part_es_face).reshape((56,46,3))
     
+    MSE = np.mean( np.square( recover_face - train_set[0].reshape((56,46,3)) ) )
+    print("MSE: ", MSE)
     cv2.imwrite("n_"+str(i)+"_recover_face"+".jpg", recover_face)
+
+K = [1, 3,  5]
+N = [3,50,159]
+
+
+for k in K:
+    for n in N:
+        #3-fold cross validation
+        cut_t = [(0,1,2,3),(2,3,4,5),(0,1,4,5)]
+        cut_v = [    (4,5),    (0,1),    (2,3)]
+        for i in range(3):
+            train_set  = images[:, cut_t[i], :, :, :].reshape(160, 56*46*3)
+            valid_set  = images[:, cut_v[i], :, :, :].reshape( 80, 56*46*3)
+
+            pca = PCA(whiten=True)
+            pca.fit(train_set)
+
+            es_valid = pca.transform(valid_set.reshape(80, 56*46*3))
+            
+            
+
+
+
+
+
