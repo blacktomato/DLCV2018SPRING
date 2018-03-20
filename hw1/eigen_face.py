@@ -4,7 +4,7 @@
  # File Name : eigen_face.py
  # Purpose : Use PCA to analyze the eigen face
  # Creation Date : 廿十八年三月十六日 (週五) 十六時〇分53秒
- # Last Modified : 廿十八年三月廿日 (週二) 十六時52分廿八秒
+ # Last Modified : 2018年03月20日 (週二) 17時13分06秒
  # Created By : SL Chung
 ##############################################################
 import os
@@ -36,5 +36,5 @@ cv2.imwrite("meanface.jpg", pca.mean_.reshape((56,46,3)))
 for i in range(3):
     cv2.imwrite("eigenF_"+str(i)+".jpg", eigenface[i].reshape((56,46,3)))
 
-
-#pca.inverse_transform()
+#transform pic 1_1 to eigen space
+es_face = pca.transform(train_set[0].reshape((1,56*46*3)))
