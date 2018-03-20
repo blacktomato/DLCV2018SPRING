@@ -4,7 +4,7 @@
  # File Name : eigen_face.py
  # Purpose : Use PCA to analyze the eigen face
  # Creation Date : 廿十八年三月十六日 (週五) 十六時〇分53秒
- # Last Modified : 廿十八年三月十六日 (週五) 十七時44分54秒
+ # Last Modified : 廿十八年三月廿日 (週二) 十六時52分廿八秒
  # Created By : SL Chung
 ##############################################################
 import os
@@ -22,11 +22,19 @@ for filename in os.listdir(path):
     index = int(index[0]), int(index[1])
     images[index[0]-1, index[1]-1]=cv2.imread(path+filename) 
 
-train_set = images[:, 0:6 , :, :, :].reshape(240, 56, 46, 3)
-test_set  = images[:, 6:10, :, :, :].reshape(240, 56, 46, 3)
+train_set = images[:, 0:6 , :, :, :].reshape(240, 56*46*3)
+test_set  = images[:, 6:10, :, :, :].reshape(160, 56*46*3)
 
 
-pca = PCA(n_components = 240)
-pca.fit()
+pca = PCA(whiten=True)
+pca.fit(train_set)
+eigenface = pca.components_
+scale = np.max(eigenface, axis=1) - np.min(eigenface, axis=1)
+eigenface = (eigenface - np.min(eigenface, axis=1).reshape(240, 1)) / scale.reshape(240,1) * 255
+
+cv2.imwrite("meanface.jpg", pca.mean_.reshape((56,46,3)))
+for i in range(3):
+    cv2.imwrite("eigenF_"+str(i)+".jpg", eigenface[i].reshape((56,46,3)))
 
 
+#pca.inverse_transform()
