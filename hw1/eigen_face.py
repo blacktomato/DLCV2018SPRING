@@ -4,7 +4,7 @@
  # File Name : eigen_face.py
  # Purpose : Use PCA to analyze the eigen face
  # Creation Date : 廿十八年三月十六日 (週五) 十六時〇分53秒
- # Last Modified : 2018年03月20日 (週二) 17時27分44秒
+ # Last Modified : 2018年03月20日 (週二) 17時46分01秒
  # Created By : SL Chung
 ##############################################################
 import os
@@ -42,8 +42,8 @@ es_face = pca.transform(train_set[0].reshape((1,56*46*3)))
 #partially recover face 1_1
 n = [3, 50 ,100, 239]
 for i in n:
-    part_es_face = es_face
-    part_es_face[0][3::] = 0
+    part_es_face = np.zeros((1,240))
+    part_es_face[0][0:i] = es_face[0][0:i]
     recover_face = pca.inverse_transform(part_es_face).reshape((56,46,3))
     
-    cv2.imwrite("n_"+str(i)"_recover_face"+".jpg", recover_face)
+    cv2.imwrite("n_"+str(i)+"_recover_face"+".jpg", recover_face)
