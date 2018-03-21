@@ -4,7 +4,7 @@
  # File Name : eigen_face.py
  # Purpose : Use PCA to analyze the eigen face
  # Creation Date : 廿十八年三月十六日 (週五) 十六時〇分53秒
- # Last Modified : 2018年03月22日 (週四) 00時17分38秒
+ # Last Modified : 2018年03月22日 (週四) 00時25分44秒
  # Created By : SL Chung
 ##############################################################
 import os
@@ -28,7 +28,7 @@ train_set = images[:, 0:6 , :, :, :].reshape(240, 56*46*3)
 test_set  = images[:, 6:10, :, :, :].reshape(160, 56*46*3)
 
 
-pca = PCA(whiten=True)
+pca = PCA()
 pca.fit(train_set)
 eigenface = pca.components_
 scale = np.max(eigenface, axis=1) - np.min(eigenface, axis=1)
