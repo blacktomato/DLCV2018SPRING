@@ -4,7 +4,7 @@
  # File Name : eigen_face.py
  # Purpose : Use PCA to analyze the eigen face
  # Creation Date : 廿十八年三月十六日 (週五) 十六時〇分53秒
- # Last Modified : 2018年03月20日 (週二) 23時24分14秒
+ # Last Modified : 2018年03月22日 (週四) 00時17分38秒
  # Created By : SL Chung
 ##############################################################
 import os
@@ -69,7 +69,7 @@ for k in K:
                  (all[2],all[3])]
         print("k= ", k , ", n= ", n)
         accuracy = [0,0,0]
-        pca = PCA(whiten=True)
+        pca = PCA()
         target = np.repeat(np.arange(40),4)
         answer = np.repeat(np.arange(40),2)
         for i in range(3):
@@ -92,12 +92,12 @@ for k in K:
         print(", accuracy= ", np.mean(accuracy)*100, "%")
 
 train_set  = images[:, 0:6, :, :, :].reshape(240, 56*46*3)
-pca = PCA(whiten=True)
+pca = PCA()
 pca.fit(train_set)
 target = np.repeat(np.arange(40),6)
 answer = np.repeat(np.arange(40),4)
 k = 1
-N = 159
+n = 159
 '''
 for k in K:
     for n in N:
