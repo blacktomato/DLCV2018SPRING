@@ -4,13 +4,14 @@
  # File Name : color_testure_segment.py
  # Purpose : Color & Texture Segmentation for images
  # Creation Date : 廿十八年三月廿八日 (週三) 十五時41分十秒
- # Last Modified : 廿十八年三月廿八日 (週三) 十八時50分六秒
+ # Last Modified : 廿十八年三月卅日 (週五) 廿一時35分55秒
  # Created By : SL Chung
 ##############################################################
 
 import cv2
 import numpy as np
 import scipy.io as scio
+from scipy import signal 
 from sklearn.cluster import KMeans
 
 import randomcolor
@@ -37,7 +38,7 @@ kmeans = KMeans(n_clusters = k, max_iter = max_iteration)
 
 #Which task should be done
 Color_Cluster = False
-Texture_Cluster = True
+Texture_Cluster = True 
 
 if Color_Cluster:
     flatten_z = img_z.reshape((s_z[0]*s_z[1], s_h[2]))
@@ -50,5 +51,19 @@ if Color_Cluster:
     img_Ccluster_m = colors[cluster_m_color]
     cv2.imwrite("Ccluster_mountain.jpg", img_Ccluster_m)
 
+#Start the KMeans Algorithm
+k = 6
+max_iteration = 1000
+kmeans = KMeans(n_clusters = k, max_iter = max_iteration)
+
 if Texture_Cluster:
-    
+    #Symmetric Padding
+    gray_z = cv2.cvtColor(img_z, cv2.COLOR_BGR2GRAY)
+    gray_m = cv2.cvtColor(img_m, cv2.COLOR_BGR2GRAY)
+    #Use filter to transform the image shape to h*w*38
+    filtered_z = np.zeros((s_z[0], s_z[1], F.shape[2]))
+    filtered_m = np.zeros((s_m[0], s_m[1], F.shape[2]))
+    for i in range(F.shape[2]):
+        filtered_z[:,:,i] = signal.correlate2d(gray_z, F[:,:,i], boundary='symm', mode='same')
+        filtered_m[:,:,i] = signal.correlate2d(gray_m, F[:,:,i], boundary='symm', mode='same')
+
