@@ -4,7 +4,7 @@
  # File Name : bag_of_visual_word.py
  # Purpose : Recognition with Bag of Visual Word
  # Creation Date : 廿十八年四月四日 (週三) 廿二時廿九分十六秒
- # Last Modified : 廿十八年四月八日 (週日) 〇時59分55秒
+ # Last Modified : 廿十八年四月八日 (週日) 二時47分卅秒
  # Created By : SL Chung
 ##############################################################
 
@@ -16,6 +16,8 @@ from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 from sklearn.neighbors import KNeighborsClassifier
 import randomcolor
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 train100_path = '../data/hw2_dataset/Problem3/train-100/'
 train10_path  = '../data/hw2_dataset/Problem3/train-10/'
@@ -74,12 +76,6 @@ print('Finding the key points for Test-100...')
 mean_kp, test100_des = find_kp(test100)
 print('Average Keypoint for Test-100 (500):', mean_kp, '\n')
 '''
-#Generate 6 Colors
-colors = np.zeros((6,3))
-rand_color = randomcolor.RandomColor()
-for i in range(6):
-    temp = rand_color.generate()[0]
-    colors[i] = np.array([int(temp[1:3], 16), int(temp[3:5], 16), int(temp[5:7], 16)])
 
 #Start the KMeans Algorithm
 k = 50
@@ -94,8 +90,24 @@ for idx in train10_des:
 train10_des_cluster = kmeans.fit_predict(alldes_train10)
 print("--- %s seconds ---" % (time.time() - start_time))
 
-
-c_3D_plot = np.random.randint(50, size=6)
+#Generate 6 Colors
+colors = np.zeros((6,3))
+rand_color = randomcolor.RandomColor()
 for i in range(6):
+    temp = rand_color.generate()[0]
+    colors[i] = np.array([int(temp[1:3], 16), int(temp[3:5], 16), int(temp[5:7], 16)])
 
-print("Done!")
+pca = PCA(n_components=3)
+coor_train10 = pca.fit_transform(alldes_train10)
+coor_centr = pca.transform(kmeans.cluster_centers_)
+c_3D_plot = np.random.randint(50, size=6)
+fig = plt.figure()
+ax  = fig.add_subplot(111, projection='3d')
+for i in range(6):
+    color = np.random.rand(3,)
+    temp = coor_train10[np.nonzero(train10_des_cluster == c_3D_plot[i])]
+    ax.scatter(temp[:,0], temp[:,1], temp[:,2], 
+               c=colors[i]/255, depthshade=False)
+    temp = coor_centr[c_3D_plot[i]]
+    ax.scatter(temp[0], temp[1], temp[2], c=colors[i]/255, depthshade=False)
+plt.savefig("PCA_3D_train10.jpg")
