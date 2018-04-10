@@ -4,7 +4,7 @@
  # File Name : color_testure_segment.py
  # Purpose : Color & Texture Segmentation for images
  # Creation Date : 廿十八年三月廿八日 (週三) 十五時41分十秒
- # Last Modified : 廿十八年四月四日 (週三) 廿二時十八分一秒
+ # Last Modified : 廿十八年四月十一日 (週三) 〇時51分33秒
  # Created By : SL Chung
 ##############################################################
 
@@ -39,7 +39,7 @@ kmeans = KMeans(n_clusters = k, max_iter = max_iteration)
 #Which task should be done
 Color_Cluster = False
 Texture_Cluster = False
-Color_Texture_Cluster = True
+Color_Texture_Cluster = False
 
 if Color_Cluster:
     flatten_z = img_z.reshape((s_z[0]*s_z[1], s_z[2]))
@@ -55,6 +55,24 @@ if Color_Cluster:
     cv2.imwrite("Ccluster_zebra.jpg", img_Ccluster_z)
     img_Ccluster_m = colors[cluster_m_color]
     cv2.imwrite("Ccluster_mountain.jpg", img_Ccluster_m)
+
+    lab_z = cv2.cvtColor(img_z, cv2.COLOR_BGR2Lab)
+    lab_m = cv2.cvtColor(img_m, cv2.COLOR_BGR2Lab)
+
+    flatten_z = lab_z.reshape((s_z[0]*s_z[1], s_z[2]))
+    flatten_m = lab_m.reshape((s_m[0]*s_m[1], s_m[2]))
+    print("KMeans clustering...")
+    start_time = time.time()
+    cluster_z_color = kmeans.fit_predict(flatten_z).reshape((s_z[0], s_z[1]))
+    cluster_m_color = kmeans.fit_predict(flatten_m).reshape((s_m[0], s_m[1]))
+    print("--- %s seconds ---" % (time.time() - start_time))
+    #Output images
+    print("Saving images...")
+    img_Lcluster_z = colors[cluster_z_color]
+    cv2.imwrite("Lcluster_zebra.jpg", img_Ccluster_z)
+    img_Lcluster_m = colors[cluster_m_color]
+    cv2.imwrite("Lcluster_mountain.jpg", img_Lcluster_m)
+                                                                
     print("Done!")
 
 #Start the KMeans Algorithm
