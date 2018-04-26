@@ -12,15 +12,11 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Activation
+from keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Activation, Dropout
 from keras.models import Model
 # GPU setting\n",
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
-sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-set_session(sess)
 
 #sat & mask
 filepath = '../data/hw3_dataset/train/'
@@ -84,8 +80,10 @@ model.load_weights(weights_path, by_name=True)
 o = model.layers[-1].output
 
 o = Conv2D(4096, (7, 7), activation='relu', padding='same')(o)
+o = Dropout(0.5)(o)
 o = Conv2D(4096, (1, 1), activation='relu', padding='same')(o)
-o = Conv2D( n_classes ,  ( 1 , 1 ) ,kernel_initializer='he_normal')(o)
+o = Dropout(0.5)(o)
+o = Conv2D( n_classes, (1 ,1), kernel_initializer='he_normal')(o)
 o = Conv2DTranspose(n_classes, kernel_size=(64, 64), strides=(32, 32), padding='same', name='FCN_convtrans1')(o)
 o = Activation('softmax')(o)
 fcn_model = Model( img_input , o )
@@ -93,8 +91,11 @@ fcn_model = Model( img_input , o )
 fcn_model.summary()
 
 fcn_model.compile(optimizer='adam',
-loss='categorical_crossentropy',
-metrics=['accuracy'])
-fcn_model.fit(sat, mask, epochs= 100, batch_size= 20 )
-
-fcn_model.save('0426_1417.h5')
+	loss='categorical_crossentropy',
+	metrics=['accuracy'])
+fcn_model.fit(sat, mask, epochs= 1 , batch_size= 20 )
+fcn_model.save('epoch1.h5')
+fcn_model.fit(sat, mask, epochs= 25, batch_size= 20 )
+fcn_model.save('epoch25.h5')
+fcn_model.fit(sat, mask, epochs= 50, batch_size= 20 )
+fcn_model.save('epoch50.h5')
