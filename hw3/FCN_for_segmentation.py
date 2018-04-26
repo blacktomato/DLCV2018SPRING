@@ -4,7 +4,7 @@
  # File Name : FCN_for_segmentation.py
  # Purpose : Training a Fully Convolution Network for Image Segmentation
  # Creation Date : 廿十八年四月廿五日 (週三) 十一時廿八分34秒
- # Last Modified : 廿十八年四月廿六日 (週四) 十四時十七分38秒
+ # Last Modified : 廿十八年四月廿六日 (週四) 十五時廿三分七秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -14,6 +14,13 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Activation
 from keras.models import Model
+# GPU setting\n",
+import tensorflow as tf
+from keras.backend.tensorflow_backend import set_session
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
+sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+set_session(sess)
 
 #sat & mask
 filepath = '../data/hw3_dataset/train/'
@@ -31,24 +38,20 @@ sat = np.empty((n_sats, h, w, d))
 for i, file in enumerate(sat_list):
     sat[i] = mpimg.imread(os.path.join(filepath, file))/255
 
-mask = np.empty((n_masks, h, w))
+mask = np.empty((n_masks, h, w, n_classes))
+cate = np.eye(n_classes)
 for i, file in enumerate(mask_list):
     m = mpimg.imread(os.path.join(filepath, file))
     m = (m >= 1).astype(int)
     m = 4 * m[:, :, 0] + 2 * m[:, :, 1] + m[:, :, 2]    
-    mask[i, m == 3] = 0  # (Cyan:   011) Urban land 
-    mask[i, m == 6] = 1  # (Yellow: 110) Agriculture land 
-    mask[i, m == 5] = 2  # (Purple: 101) Rangeland 
-    mask[i, m == 2] = 3  # (Green:  010) Forest land 
-    mask[i, m == 1] = 4  # (Blue:   001) Water 
-    mask[i, m == 7] = 5  # (White:  111) Barren land 
-    mask[i, m == 0] = 6  # (Black:  000) Unknown
-    mask[i, m == 4] = 6  # (Red:    100) Unknown 
-
-#turn red into black(Unknown)
-mask[mask==4]=0
-
-target = np.eye(n_classes)[mask.astype(int)]
+    mask[i, m == 3] =cate[0]  # (Cyan:   011) Urban land 
+    mask[i, m == 6] =cate[1]  # (Yellow: 110) Agriculture land 
+    mask[i, m == 5] =cate[2]  # (Purple: 101) Rangeland 
+    mask[i, m == 2] =cate[3]  # (Green:  010) Forest land 
+    mask[i, m == 1] =cate[4]  # (Blue:   001) Water 
+    mask[i, m == 7] =cate[5]  # (White:  111) Barren land 
+    mask[i, m == 0] =cate[6]  # (Black:  000) Unknown
+    mask[i, m == 4] =cate[6]  # (Red:    100) Unknown 
 
 img_input = Input(shape=(512,512,3))
 x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1', trainable=False)(img_input)
@@ -92,6 +95,6 @@ fcn_model.summary()
 fcn_model.compile(optimizer='adam',
 loss='categorical_crossentropy',
 metrics=['accuracy'])
-fcn_model.fit(sat, target, epochs= 200, batch_size= 100 )
+fcn_model.fit(sat, mask, epochs= 100, batch_size= 20 )
 
 fcn_model.save('0426_1417.h5')
