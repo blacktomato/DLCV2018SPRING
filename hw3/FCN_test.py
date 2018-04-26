@@ -4,7 +4,7 @@
  # File Name : FCN_test.py
  # Purpose : Loading the FCN Model and Test the Data
  # Creation Date : 廿十八年四月廿六日 (週四) 廿一時廿三分三秒
- # Last Modified : 廿十八年四月廿六日 (週四) 廿三時51分44秒
+ # Last Modified : 2018年04月27日 (週五) 02時55分59秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -17,8 +17,8 @@ from keras.models import Model, load_model
 # GPU setting\n",
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
 sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 set_session(sess)
 
@@ -44,7 +44,7 @@ for i, file in enumerate(sat_list):
 fcn_model = load_model('./128_33_128_11_e50b20.h5')
 fcn_model.summary()
 
-result = fcn_model.predict(sat)
+result = fcn_model.predict(sat, batch_size=20)
 result = np.argmax(result, axis=3)
 
 color = np.array([[0 , 1., 1.],
@@ -67,4 +67,4 @@ for i, file in enumerate(mask_list):
         num =   '0'+str(i)
     else:
         num =       str(i)
-    mpimg.imsave(pred_valid_path + num + '_mask.png', result[i])
+    mpimg.imsave(pred_valid_path + num + '_mask.png', mask[i])
