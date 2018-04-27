@@ -4,7 +4,7 @@
  # File Name : FCN_for_segmentation.py
  # Purpose : Training a Fully Convolution Network for Image Segmentation
  # Creation Date : 廿十八年四月廿五日 (週三) 十一時廿八分34秒
- # Last Modified : 2018年04月27日 (週五) 01時38分44秒
+ # Last Modified : 2018年04月27日 (週五) 11時24分34秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -50,28 +50,28 @@ for i, file in enumerate(mask_list):
     mask[i, m == 4] =cate[6]  # (Red:    100) Unknown 
 
 img_input = Input(shape=(512,512,3))
-x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1', trainable=False)(img_input)
-x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2', trainable=False)(x)
-x = MaxPooling2D((2, 2), strides=(2, 2), name='block1_pool', trainable=False)(x)
+x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1', trainable=True)(img_input)
+x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2', trainable=True)(x)
+x = MaxPooling2D((2, 2), strides=(2, 2), name='block1_pool', trainable=True)(x)
 
-x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv1', trainable=False)(x)
-x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv2', trainable=False)(x)
-x = MaxPooling2D((2, 2), strides=(2, 2), name='block2_pool', trainable=False)(x)
+x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv1', trainable=True)(x)
+x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv2', trainable=True)(x)
+x = MaxPooling2D((2, 2), strides=(2, 2), name='block2_pool', trainable=True)(x)
 
-x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1', trainable=False)(x)
-x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2', trainable=False)(x)
-x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3', trainable=False)(x)
-x = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool', trainable=False)(x)
+x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1', trainable=True)(x)
+x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2', trainable=True)(x)
+x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3', trainable=True)(x)
+x = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool', trainable=True)(x)
 
-x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1', trainable=False)(x)
-x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2', trainable=False)(x)
-x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3', trainable=False)(x)
-x = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool', trainable=False)(x)
+x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1', trainable=True)(x)
+x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2', trainable=True)(x)
+x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3', trainable=True)(x)
+x = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool', trainable=True)(x)
 
-x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1', trainable=False)(x)
-x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2', trainable=False)(x)
-x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3', trainable=False)(x)
-x = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool', trainable=False)(x)
+x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1', trainable=True)(x)
+x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2', trainable=True)(x)
+x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3', trainable=True)(x)
+x = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool', trainable=True)(x)
 o = x
 model = Model(img_input, x)
 weights_path = '../data/hw3_dataset/vgg16_weights_tf_dim_ordering_tf_kernels.h5'
@@ -79,9 +79,9 @@ model.load_weights(weights_path, by_name=True)
 
 o = model.layers[-1].output
 
-o = Conv2D(4096, (7, 7), activation='relu', padding='same')(o)
+o = Conv2D(4096, (7, 7), activation='relu', padding='same',kernel_initializer='he_normal')(o)
 o = Dropout(0.5)(o)
-o = Conv2D(4096, (1, 1), activation='relu', padding='same')(o)
+o = Conv2D(4096, (1, 1), activation='relu', padding='same',kernel_initializer='he_normal')(o)
 o = Dropout(0.5)(o)
 o = Conv2D( n_classes, (1 ,1), kernel_initializer='he_normal')(o)
 o = Conv2DTranspose(n_classes, kernel_size=(64, 64), strides=(32, 32), padding='same', name='FCN_convtrans1')(o)
@@ -94,8 +94,8 @@ fcn_model.compile(optimizer='adam',
 	loss='categorical_crossentropy',
 	metrics=['accuracy'])
 fcn_model.fit(sat, mask, epochs= 1 , batch_size= 20 )
-fcn_model.save('epoch1.h5')
-fcn_model.fit(sat, mask, epochs= 25, batch_size= 20 )
-fcn_model.save('epoch25.h5')
-fcn_model.fit(sat, mask, epochs= 50, batch_size= 20 )
-fcn_model.save('epoch50.h5')
+fcn_model.save('VGG_trainable_epoch1.h5')
+fcn_model.fit(sat, mask, epochs= 19, batch_size= 20 )
+fcn_model.save('VGG_trainable_epoch20.h5')
+fcn_model.fit(sat, mask, epochs= 20, batch_size= 20 )
+fcn_model.save('VGG_trainable_epoch40.h5')
