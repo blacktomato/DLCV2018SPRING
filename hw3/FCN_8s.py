@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # coding=utf-8
 ##############################################################
- # File Name : FCN_for_segmentation.py
- # Purpose : Training a Fully Convolution Network for Image Segmentation
+ # File Name : FCN_8s.py
+ # Purpose : Training a Fully Convolution Network for Image Segmentation 8s version
  # Creation Date : 廿十八年四月廿五日 (週三) 十一時廿八分34秒
- # Last Modified : 廿十八年四月廿七日 (週五) 十六時十五分37秒
+ # Last Modified : 廿十八年四月廿七日 (週五) 十七時39分十四秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Activation, Dropout
 from keras.models import Model
+from keras import optimizers
 # GPU setting\n",
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
@@ -60,7 +61,7 @@ model.load_weights(weights_path, by_name=True)
 
 o = model.layers[-1].output
 
-o = Conv2D(4096, (5, 5), activation='relu', padding='same',kernel_initializer='he_normal')(o)
+o = Conv2D(4096, (3, 3), activation='relu', padding='same',kernel_initializer='he_normal')(o)
 o = Dropout(0.5)(o)
 o = Conv2D(4096, (1, 1), activation='relu', padding='same',kernel_initializer='he_normal')(o)
 o = Dropout(0.5)(o)
@@ -71,7 +72,8 @@ fcn_model = Model( img_input , o )
 
 fcn_model.summary()
 
-fcn_model.compile(optimizer='adam',
+adam = optimizers.Adam(lr=0.0001)
+fcn_model.compile(optimizer=adam,
 	loss='categorical_crossentropy',
 	metrics=['accuracy'])
 fcn_model.fit(sat, mask, epochs= 1 , batch_size= 15 )
