@@ -4,7 +4,7 @@
  # File Name : FCN_test.py
  # Purpose : Loading the FCN Model and Test the Data
  # Creation Date : 廿十八年四月廿六日 (週四) 廿一時廿三分三秒
- # Last Modified : 2018年04月27日 (週五) 02時55分59秒
+ # Last Modified : 2018年04月28日 (週六) 00時11分45秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -17,13 +17,13 @@ from keras.models import Model, load_model
 # GPU setting\n",
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.9)
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
 sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 set_session(sess)
 
 # valid sat & mask
-filepath = sys.argv[1]
+filepath = sys.argv[2]
 print("Start Testing: ", filepath, "...")
 
 sat_list = [file for file in os.listdir(filepath) if file.endswith('.jpg')]
@@ -41,10 +41,11 @@ sat = np.empty((n_sats, h, w, d))
 for i, file in enumerate(sat_list):
     sat[i] = mpimg.imread(os.path.join(filepath, file))/255
 
-fcn_model = load_model('./128_33_128_11_e50b20.h5')
+model_name = sys.argv[1]
+fcn_model = load_model(model_name)
 fcn_model.summary()
 
-result = fcn_model.predict(sat, batch_size=20)
+result = fcn_model.predict(sat, batch_size=1)
 result = np.argmax(result, axis=3)
 
 color = np.array([[0 , 1., 1.],
@@ -56,7 +57,7 @@ color = np.array([[0 , 1., 1.],
                   [0 , 0 , 0 ],
                   ])
 mask = color[result]
-pred_valid_path = sys.argv[2]
+pred_valid_path = sys.argv[3]
 for i, file in enumerate(mask_list):
     num = ''
     if (i < 10):
