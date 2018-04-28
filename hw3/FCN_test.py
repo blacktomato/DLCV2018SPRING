@@ -4,7 +4,7 @@
  # File Name : FCN_test.py
  # Purpose : Loading the FCN Model and Test the Data
  # Creation Date : 廿十八年四月廿六日 (週四) 廿一時廿三分三秒
- # Last Modified : 2018年04月28日 (週六) 00時11分45秒
+ # Last Modified : 2018年04月29日 (週日) 00時48分23秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -12,16 +12,17 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import time
 from keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Activation
 from keras.models import Model, load_model
 # GPU setting\n",
-import tensorflow as tf
-from keras.backend.tensorflow_backend import set_session
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
-sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
-set_session(sess)
-
+# import tensorflow as tf
+# from keras.backend.tensorflow_backend import set_session
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.4)
+# sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
+# set_session(sess)
+s = time.time()
 # valid sat & mask
 filepath = sys.argv[2]
 print("Start Testing: ", filepath, "...")
@@ -68,4 +69,5 @@ for i, file in enumerate(mask_list):
         num =   '0'+str(i)
     else:
         num =       str(i)
-    mpimg.imsave(pred_valid_path + num + '_mask.png', mask[i])
+    mpimg.imsave(os.path.join(pred_valid_path, num + '_mask.png'), mask[i])
+print(time.time() - s, 'seconds')
