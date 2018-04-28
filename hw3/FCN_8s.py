@@ -4,7 +4,7 @@
  # File Name : FCN_8s.py
  # Purpose : Training a Fully Convolution Network for Image Segmentation 8s version
  # Creation Date : 廿十八年四月廿五日 (週三) 十一時廿八分34秒
- # Last Modified : 廿十八年四月廿八日 (週六) 十三時49分廿三秒
+ # Last Modified : 2018年04月28日 (週六) 14時36分32秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -12,13 +12,13 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
-from keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Activation, Dropout, Concatenate
+from keras.layers import Input, Conv2D, MaxPooling2D, Conv2DTranspose, UpSampling2D, Activation, Dropout, add 
 from keras.models import Model
 from keras import optimizers
 # GPU setting\n",
 import tensorflow as tf
 from keras.backend.tensorflow_backend import set_session
-os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
 sess = tf.Session(config=tf.ConfigProto(gpu_options=gpu_options))
 set_session(sess)
@@ -29,10 +29,8 @@ sat_list = [file for file in os.listdir(filepath) if file.endswith('.jpg')]
 mask_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
 sat_list.sort()
 mask_list.sort()
-#n_sats   = len(sat_list)
-#n_masks = len(mask_list)
-n_sats   = 500
-n_masks = 500 
+n_sats   = len(sat_list)
+n_masks = len(mask_list)
 n_classes = 7
 h=512
 w=512
@@ -94,15 +92,18 @@ o = Conv2D(4096, (3, 3), activation='relu', padding='same',kernel_initializer='h
 o = Dropout(0.5)(o)
 o = Conv2D(4096, (1, 1), activation='relu', padding='same',kernel_initializer='he_normal')(o)
 o = Dropout(0.5)(o)
-o = Conv2DTranspose(256, kernel_size=(64, 64), strides=(4, 4), padding='same', name='FCN_convtrans1')(o)
-pool4_up = Conv2DTranspose(256, kernel_size=(64, 64), strides=(2, 2), padding='same', name='FCN_Upsampling_Pool4')(pool4)
-
-#Concatenate the Three Layers
-o = Concatenate([o, pool4_up, pool3])
-o = Dropout(0.5)(o)
-
 o = Conv2D( n_classes, (1 ,1), kernel_initializer='he_normal')(o)
-o = Conv2DTranspose(n_classes, kernel_size=(64, 64), strides=(8, 8), padding='same', name='FCN_convtrans2')(o)
+o = Conv2DTranspose(n_classes, kernel_size=(8, 8), strides=(4, 4), padding='same', name='FCN_Upsampling_Conv7')(o)
+
+pool4 = Conv2D( n_classes, (1 ,1), kernel_initializer='he_normal')(pool4)
+pool4_up = Conv2DTranspose(n_classes, kernel_size=(4, 4), strides=(2, 2), padding='same', name='FCN_Upsampling_Pool4')(pool4)
+
+pool3 = Conv2D( n_classes, (1 ,1), kernel_initializer='he_normal')(pool3)
+
+#Fusing the Three Layers
+o = add([o, pool4_up, pool3])
+o = Conv2DTranspose(n_classes, kernel_size=(16, 16), strides=(8, 8), padding='same', name='FCN_convtrans3')(o)
+
 
 o = Activation('softmax')(o)
 fcn_model = Model( img_input , o )
