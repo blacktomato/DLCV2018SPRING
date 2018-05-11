@@ -4,7 +4,7 @@
  # File Name : VAE.py
  # Purpose : Training a Variational AutoEncoder model
  # Creation Date : 2018年05月03日 (週四) 13時34分13秒
- # Last Modified : 2018年05月11日 (週五) 01時08分29秒
+ # Last Modified : Fri 11 May 2018 03:53:52 PM CST
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -64,7 +64,7 @@ class Encoder(nn.Module):
    
 class Decoder(nn.Module):
     def __init__(self, D_in):
-        super(Encoder, self).__init__()
+        super(Decoder, self).__init__()
         ndf = 64
         #decode 1024 dims vector
         self.convtrans1 = nn.ConvTranspose2d(   D_in, ndf*16, (1,1))
@@ -97,8 +97,8 @@ class VAE(torch.nn.Module):
         super(VAE, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
-        self._enc_mu = torch.nn.linear()
-        self._enc_log_sigma = torch.nn.linear()
+        self._enc_mu = 1#torch.nn.linear()
+        self._enc_log_sigma = 1#torch.nn.linear()
     def _sample_latent(self, h_enc):
         """
         Return the latent normal sample z ~ N(mu, sigma^2)
@@ -124,7 +124,7 @@ def latent_loss(z_mean, z_stddev):
 
 if __name__ == '__main__':
     batch_size = 200
-    epochs = 1000
+    epochs = 10
 
     print('Reading the training data of face...', end='')
     sys.stdout.flush()
@@ -133,27 +133,52 @@ if __name__ == '__main__':
     face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
     face_list.sort()
     n_faces = len(face_list)
+    n_faces = 2000 
     h, w, d = 64, 64, 3
     face_np = np.empty((n_faces, h, w, d), dtype='float32')
 
     for i, file in enumerate(face_list):
+        if i == 2000:
+             break
         face_np[i] = mpimg.imread(os.path.join(filepath, file))
     print("Done!")
 
     #Turn the np dataset to Tensor
     face_ts = torch.from_numpy(face_np.transpose((0, 3, 1, 2)))
-    
-    dataloader = Data.DataLoader(face_ts, batch_size=batch_size, shuffle=True)
+    face_set = Data.TensorDataset(data_tensor=face_ts, target_tensor=face_ts)
+
+    dataloader = Data.DataLoader(dataset=face_set, 
+                                    batch_size=batch_size, 
+                                    shuffle=True,
+                                    num_workers=4)
 
     encoder = Encoder(3)
     decoder = Decoder(1024)
     vae = VAE(encoder, decoder)
 
     criterion = nn.MSELoss()
+    lambda_KL = 1
 
-    optimizer = optim.Adam(vae.parameters(), lr=1e-4, beta=(0.5,0.999))
+    optimizer = optim.Adam(vae.parameters(), lr=1e-4, betas=(0.5,0.999))
     
     for epoch in range(epochs):
-        for i, data in enumerate(dataloader, 0):
+        vae.train()
+        train_loss = 0
+        for batch_idx, (b_img, b_tar) in enumerate(dataloader):
+            optimizer.zero_grad()
+            dec = vae(b_img)    
+            ll = latent_loss(vae.z_mean, vae.z_sigma)
+            loss = criterion(dec, inputs) + lambda_KL * ll
+            loss.backward()
+            optimizer.step()
+            train_loss += loss.data[0]
+            if batch_idx % 40 == 0:
+                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                    epoch, batch_idx * len(b_img), len(train_loader.dataset),
+                    100. * batch_idx / len(train_loader),
+                    loss.data[0] /len(data)))
+
+        print('====> Epoch: {} Average loss: {:,4f}'.format(epoch, l))
+            
             
 
