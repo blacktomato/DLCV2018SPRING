@@ -4,7 +4,7 @@
  # File Name : VAE.py
  # Purpose : Training a Variational AutoEncoder model
  # Creation Date : 2018年05月03日 (週四) 13時34分13秒
- # Last Modified : Fri 11 May 2018 03:53:52 PM CST
+ # Last Modified : 廿十八年五月十一日 (週五) 十八時51分43秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -27,7 +27,7 @@ boardX = True
 if boardX:
     from tensorboardX import SummaryWriter
 
-class Encoder(nn.Module):
+class Encoder(nn.Module): 
     def __init__(self, D_in):
         super(Encoder, self).__init__()
         #for 64x64 images
@@ -59,8 +59,8 @@ class Encoder(nn.Module):
         x = F.leaky_relu(self.bn6(self.conv6(x))) 
 
         mean = F.leaky_relu(self.bnm(self.convm(x)))
-        log_var = F.leaky_relu(self.bnv(self.convv(x)))
-        return mean, log_var
+        log_sigma = F.leaky_relu(self.bnv(self.convv(x)))
+        return mean, log_sigma
    
 class Decoder(nn.Module):
     def __init__(self, D_in):
@@ -84,43 +84,41 @@ class Decoder(nn.Module):
         self.bn7 = nn.BatchNorm2d(3)
 
     def forward(self, x):
-        x = F.leaky_relu(self.bn1(self.conv1(x))) 
-        x = F.leaky_relu(self.bn2(self.conv2(x))) 
-        x = F.leaky_relu(self.bn3(self.conv3(x))) 
-        x = F.leaky_relu(self.bn4(self.conv4(x))) 
-        x = F.leaky_relu(self.bn5(self.conv5(x))) 
-        x = F.leaky_relu(self.bn6(self.conv6(x))) 
-        return F.tanh(self.bn7(self.conv7(x))) 
+        x = F.leaky_relu(self.bn1(self.convtrans1(x))) 
+        x = F.leaky_relu(self.bn2(self.convtrans2(x))) 
+        x = F.leaky_relu(self.bn3(self.convtrans3(x))) 
+        x = F.leaky_relu(self.bn4(self.convtrans4(x))) 
+        x = F.leaky_relu(self.bn5(self.convtrans5(x))) 
+        x = F.leaky_relu(self.bn6(self.convtrans6(x))) 
+        return F.tanh(self.bn7(self.convtrans7(x))) 
 
 class VAE(torch.nn.Module):
     def __init__(self, encoder, decoder):
         super(VAE, self).__init__()
         self.encoder = encoder
         self.decoder = decoder
-        self._enc_mu = 1#torch.nn.linear()
-        self._enc_log_sigma = 1#torch.nn.linear()
     def _sample_latent(self, h_enc):
         """
         Return the latent normal sample z ~ N(mu, sigma^2)
         """
-        mu = self._enc_mu(h_enc)
-        log_sigma = self._enc_log_sigma(h_enc)
-        sigma = torch.exp(log_simga)
+        mu = h_enc[0]
+        log_sigma = h_enc[1]
+        sigma = torch.exp(log_sigma)
         std_z = torch.from_numpy(np.random.normal(0, 1, size=sigma.size())).float()
 
         self.z_mean = mu
         self.z_sigma = sigma
-        
-        return mu + sigma * Variable(std_z, requires_grad=False) 
+        return mu + sigma * Variable(std_z, requires_grad=False).cuda() 
+
     def forward(self, state):
         h_enc = self.encoder(state)
         z = self._sample_latent(h_enc)
-        return self.decoder(z)
+        return self.decoder(z) 
         
 def latent_loss(z_mean, z_stddev):
     mean_sq = z_mean * z_mean
     stddev_sq = z_stddev * z_stddev #Tensor has no ** operation
-    return 0.5 * (mean_sq + stddev_sq - torch.log(stddev_sq) - 1)
+    return 0.5 * torch.mean(mean_sq + stddev_sq - torch.log(stddev_sq) - 1)
 
 if __name__ == '__main__':
     batch_size = 200
@@ -144,41 +142,43 @@ if __name__ == '__main__':
     print("Done!")
 
     #Turn the np dataset to Tensor
-    face_ts = torch.from_numpy(face_np.transpose((0, 3, 1, 2)))
+    face_ts = torch.from_numpy(face_np.transpose((0, 3, 1, 2))).cuda()
     face_set = Data.TensorDataset(data_tensor=face_ts, target_tensor=face_ts)
 
     dataloader = Data.DataLoader(dataset=face_set, 
                                     batch_size=batch_size, 
-                                    shuffle=True,
-                                    num_workers=4)
+                                    shuffle=True)
 
     encoder = Encoder(3)
     decoder = Decoder(1024)
     vae = VAE(encoder, decoder)
+    vae.cuda()
 
     criterion = nn.MSELoss()
     lambda_KL = 1
 
     optimizer = optim.Adam(vae.parameters(), lr=1e-4, betas=(0.5,0.999))
-    
+
     for epoch in range(epochs):
         vae.train()
         train_loss = 0
         for batch_idx, (b_img, b_tar) in enumerate(dataloader):
             optimizer.zero_grad()
-            dec = vae(b_img)    
+            inputs = Variable(b_img).cuda()
+            dec = vae(inputs)    
             ll = latent_loss(vae.z_mean, vae.z_sigma)
             loss = criterion(dec, inputs) + lambda_KL * ll
+            print(ll.data[0])
+            print(criterion(dec, inputs).data[0])
             loss.backward()
             optimizer.step()
             train_loss += loss.data[0]
-            if batch_idx % 40 == 0:
-                print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                    epoch, batch_idx * len(b_img), len(train_loader.dataset),
-                    100. * batch_idx / len(train_loader),
-                    loss.data[0] /len(data)))
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx * len(b_img), len(dataloader.dataset),
+                100. * batch_idx / len(dataloader),
+                loss.data[0] /len(inputs)))
 
-        print('====> Epoch: {} Average loss: {:,4f}'.format(epoch, l))
+        print('====> Epoch: {} Average loss: {:.4f}'.format(epoch, train_loss/len(dataloader.dataset)))
             
             
 
