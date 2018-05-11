@@ -4,7 +4,7 @@
  # File Name : VAE.py
  # Purpose : Training a Variational AutoEncoder model
  # Creation Date : 2018年05月03日 (週四) 13時34分13秒
- # Last Modified : 廿十八年五月十一日 (週五) 十八時51分43秒
+ # Last Modified : 廿十八年五月十一日 (週五) 廿三時40分39秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -121,8 +121,8 @@ def latent_loss(z_mean, z_stddev):
     return 0.5 * torch.mean(mean_sq + stddev_sq - torch.log(stddev_sq) - 1)
 
 if __name__ == '__main__':
-    batch_size = 200
-    epochs = 10
+    batch_size = 20
+    epochs = 1
 
     print('Reading the training data of face...', end='')
     sys.stdout.flush()
@@ -131,23 +131,36 @@ if __name__ == '__main__':
     face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
     face_list.sort()
     n_faces = len(face_list)
-    n_faces = 2000 
     h, w, d = 64, 64, 3
-    face_np = np.empty((n_faces, h, w, d), dtype='float32')
+    train_np = np.empty((n_faces, h, w, d), dtype='float32')
 
     for i, file in enumerate(face_list):
-        if i == 2000:
-             break
-        face_np[i] = mpimg.imread(os.path.join(filepath, file))
+        train_np[i] = mpimg.imread(os.path.join(filepath, file))*2-1
     print("Done!")
 
     #Turn the np dataset to Tensor
-    face_ts = torch.from_numpy(face_np.transpose((0, 3, 1, 2))).cuda()
-    face_set = Data.TensorDataset(data_tensor=face_ts, target_tensor=face_ts)
+    train_ts = torch.from_numpy(train_np.transpose((0, 3, 1, 2))).cuda()
+    train_set = Data.TensorDataset(data_tensor=train_ts, target_tensor=train_ts)
 
-    dataloader = Data.DataLoader(dataset=face_set, 
+    dataloader = Data.DataLoader(dataset=train_set, 
                                     batch_size=batch_size, 
                                     shuffle=True)
+    del train_np
+
+    print('Reading the testing data of face...', end='')
+    sys.stdout.flush()
+    filepath = '../data/hw4_dataset/test/'
+    face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
+    face_list.sort()
+    n_faces = 10
+    h, w, d = 64, 64, 3
+    test_np = np.empty((n_faces, h, w, d), dtype='float32')
+
+    for i, file in enumerate(face_list[0:10]):
+        test_np[i] = mpimg.imread(os.path.join(filepath, file))*2-1
+    print("Done!")
+    test_ts = torch.from_numpy(test_np.transpose((0, 3, 1, 2))).cuda()
+
 
     encoder = Encoder(3)
     decoder = Decoder(1024)
@@ -155,10 +168,11 @@ if __name__ == '__main__':
     vae.cuda()
 
     criterion = nn.MSELoss()
-    lambda_KL = 1
+    lambda_KL = 1e-5
 
     optimizer = optim.Adam(vae.parameters(), lr=1e-4, betas=(0.5,0.999))
 
+    #training with 40000 face images
     for epoch in range(epochs):
         vae.train()
         train_loss = 0
@@ -168,17 +182,29 @@ if __name__ == '__main__':
             dec = vae(inputs)    
             ll = latent_loss(vae.z_mean, vae.z_sigma)
             loss = criterion(dec, inputs) + lambda_KL * ll
-            print(ll.data[0])
-            print(criterion(dec, inputs).data[0])
             loss.backward()
             optimizer.step()
             train_loss += loss.data[0]
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx * len(b_img), len(dataloader.dataset),
-                100. * batch_idx / len(dataloader),
-                loss.data[0] /len(inputs)))
+            sys.stdout.write('\rTrain Epoch: {} [{}/{}]\tLoss: {:.6f}\tMSE:{:.6f}\tKLD:{:.6f}'.format(
+                epoch, (batch_idx+1) * len(b_img), len(dataloader.dataset),
+                loss.data[0]/len(inputs),
+                criterion(dec, inputs).data[0],
+                ll.data[0]))
 
-        print('====> Epoch: {} Average loss: {:.4f}'.format(epoch, train_loss/len(dataloader.dataset)))
+        print('===> Epoch: {} Average loss: {:.4f}'.format(epoch, train_loss/len(dataloader.dataset)))
             
-            
-
+    #reconstruct some images
+    inputs = Variable(test_ts).cuda()
+    vae.test()
+    recon_test = vae(inputs)
+    recon_test = recon_test.data.cpu().numpy()
+    recon_test = recon_test.transpose((0, 2, 3, 1))
+    temp_origin = np.zeros((64,0,3)) 
+    temp_recons = np.empty((64,0,3)) 
+    for i in range(10):
+        temp_origin = np.hstack((temp_origin, test_np[i,:,:,:]))
+        temp_recons = np.hstack((temp_recons, recon_np[i,:,:,:]))
+    
+    result = np.vstack((temp_origin, temp_recons))
+    mpimg.imsave(sys.argv[1], (result+1)/2)
+    
