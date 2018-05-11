@@ -4,7 +4,7 @@
  # File Name : VAE.py
  # Purpose : Training a Variational AutoEncoder model
  # Creation Date : 2018年05月03日 (週四) 13時34分13秒
- # Last Modified : 廿十八年五月十日 (週四) 廿一時九分卅一秒
+ # Last Modified : 2018年05月11日 (週五) 01時08分29秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -18,6 +18,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from torch.autograd import Variable
+import torch.optim as optim
 import torch.utils.data as Data
 import torchvision
 from torchvision import transforms
@@ -43,7 +44,7 @@ class Encoder(nn.Module):
         self.bn5 = nn.BatchNorm2d(ndf*16)
         self.conv6 = nn.Conv2d( ndf*16 ,ndf*16, (3,3), stride=2, padding=1)
         self.bn6 = nn.BatchNorm2d(ndf*16)
-
+        #1024 dims
         self.convm = nn.Conv2d( ndf*16, ndf*16, (1,1))
         self.bnm = nn.BatchNorm2d(ndf*16)
         self.convv = nn.Conv2d( ndf*16, ndf*16, (1,1))
@@ -142,5 +143,17 @@ if __name__ == '__main__':
     #Turn the np dataset to Tensor
     face_ts = torch.from_numpy(face_np.transpose((0, 3, 1, 2)))
     
-    #for epoch in range(epochs):
+    dataloader = Data.DataLoader(face_ts, batch_size=batch_size, shuffle=True)
+
+    encoder = Encoder(3)
+    decoder = Decoder(1024)
+    vae = VAE(encoder, decoder)
+
+    criterion = nn.MSELoss()
+
+    optimizer = optim.Adam(vae.parameters(), lr=1e-4, beta=(0.5,0.999))
+    
+    for epoch in range(epochs):
+        for i, data in enumerate(dataloader, 0):
+            
 
