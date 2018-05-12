@@ -4,7 +4,7 @@
  # File Name : GAN.py
  # Purpose : Training a GAN model
  # Creation Date : 2018年05月03日 (週四) 13時36分05秒
- # Last Modified : 2018年05月12日 (週六) 16時39分28秒
+ # Last Modified : 廿十八年五月十三日 (週日) 一時39分七秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -24,45 +24,7 @@ import torch.utils.data as Data
 import torchvision
 from torchvision import transforms
 
-boardX = True
-if boardX:
-    from tensorboardX import SummaryWriter
 
-class Discriminator(nn.Module): 
-    def __init__(self, D_in):
-        super(Discriminator, self).__init__()
-        #for 64x64 images
-        ndf = 64
-        self.conv1 = nn.Conv2d(D_in, ndf, (3,3), stride=2, padding=1)
-        self.bn1 = nn.BatchNorm2d(ndf)
-        self.conv2 = nn.Conv2d( ndf   ,  ndf*2, (3,3), stride=2, padding=1)
-        self.bn2 = nn.BatchNorm2d(ndf*2)
-        self.conv3 = nn.Conv2d( ndf*2 ,  ndf*4, (3,3), stride=2, padding=1)
-        self.bn3 = nn.BatchNorm2d(ndf*4)
-        self.conv4 = nn.Conv2d( ndf*4 ,  ndf*8, (3,3), stride=2, padding=1)
-        self.bn4 = nn.BatchNorm2d(ndf*8)
-        self.conv5 = nn.Conv2d( ndf*8 , ndf*16, (3,3), stride=2, padding=1)
-        self.bn5 = nn.BatchNorm2d(ndf*16)
-        self.conv6 = nn.Conv2d( ndf*16 ,ndf*16, (3,3), stride=2, padding=1)
-        self.bn6 = nn.BatchNorm2d(ndf*16)
-        #1024 dims
-        self.convm = nn.Conv2d( ndf*16, ndf*16, (1,1))
-        self.bnm = nn.BatchNorm2d(ndf*16)
-        self.convv = nn.Conv2d( ndf*16, ndf*16, (1,1))
-        self.bnv = nn.BatchNorm2d(ndf*16)
-
-    def forward(self, x):
-        x = F.leaky_relu(self.bn1(self.conv1(x))) 
-        x = F.leaky_relu(self.bn2(self.conv2(x))) 
-        x = F.leaky_relu(self.bn3(self.conv3(x))) 
-        x = F.leaky_relu(self.bn4(self.conv4(x))) 
-        x = F.leaky_relu(self.bn5(self.conv5(x))) 
-        x = F.leaky_relu(self.bn6(self.conv6(x))) 
-
-        mean = F.leaky_relu(self.bnm(self.convm(x)))
-        log_sigma = F.leaky_relu(self.bnv(self.convv(x)))
-        return mean, log_sigma
-   
 class Generator(nn.Module):
     def __init__(self, D_in):
         super(Generator, self).__init__()
@@ -93,39 +55,47 @@ class Generator(nn.Module):
         x = F.leaky_relu(self.bn6(self.convtrans6(x))) 
         return F.tanh(self.bn7(self.convtrans7(x))) 
 
-class VAE(torch.nn.Module):
-    def __init__(self, encoder, decoder):
-        super(VAE, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
-    def _sample_latent(self, h_enc):
-        """
-        Return the latent normal sample z ~ N(mu, sigma^2)
-        """
-        mu = h_enc[0]
-        log_sigma = h_enc[1]
-        sigma = torch.exp(log_sigma)
-        std_z = torch.from_numpy(np.random.normal(0, 1, size=sigma.size())).float()
+class Discriminator(nn.Module): 
+    def __init__(self, D_in):
+        super(Discriminator, self).__init__()
+        #for 64x64 images
+        ndf = 64
+        self.conv1 = nn.Conv2d(D_in, ndf, (3,3), stride=2, padding=1)
+        self.bn1 = nn.BatchNorm2d(ndf)
+        self.conv2 = nn.Conv2d( ndf   ,  ndf*2, (3,3), stride=2, padding=1)
+        self.bn2 = nn.BatchNorm2d(ndf*2)
+        self.conv3 = nn.Conv2d( ndf*2 ,  ndf*4, (3,3), stride=2, padding=1)
+        self.bn3 = nn.BatchNorm2d(ndf*4)
+        self.conv4 = nn.Conv2d( ndf*4 ,  ndf*8, (3,3), stride=2, padding=1)
+        self.bn4 = nn.BatchNorm2d(ndf*8)
+        self.conv5 = nn.Conv2d( ndf*8 , ndf*16, (3,3), stride=2, padding=1)
+        self.bn5 = nn.BatchNorm2d(ndf*16)
+        self.drop1 = nn.Dropout(0.5)
+        self.conv6 = nn.Conv2d( ndf*16 ,ndf*16, (3,3), stride=2, padding=1)
+        self.bn6 = nn.BatchNorm2d(ndf*16)
+        self.drop2 = nn.Dropout(0.5)
+        #1024 dims
+        self.conv7 = nn.Conv2d( 1, ndf*16, (1,1))
+        self.bn7 = nn.BatchNorm2d(1)
 
-        self.z_mean = mu
-        self.z_sigma = sigma
-        return mu + sigma * Variable(std_z, requires_grad=False).cuda() 
-
-    def forward(self, state):
-        h_enc = self.encoder(state)
-        z = self._sample_latent(h_enc)
-        return self.decoder(z) 
-        
-def latent_loss(z_mean, z_stddev):
-    mean_sq = z_mean * z_mean
-    stddev_sq = z_stddev * z_stddev #Tensor has no ** operation
-    return 0.5 * torch.mean(mean_sq + stddev_sq - torch.log(stddev_sq) - 1)
+    def forward(self, x):
+        x = F.leaky_relu(self.bn1(self.conv1(x))) 
+        x = F.leaky_relu(self.bn2(self.conv2(x))) 
+        x = F.leaky_relu(self.bn3(self.conv3(x))) 
+        x = F.leaky_relu(self.bn4(self.conv4(x))) 
+        x = F.leaky_relu(self.drop1(self.bn5(self.conv5(x)))) 
+        x = F.leaky_relu(self.drop2(self.bn6(self.conv6(x))))
+        x = F.leaky_relu(self.bn7(self.conv7(x)))
+        return x
 
 if __name__ == '__main__':
     batch_size = 20
-    epochs = 100
+    epochs = 5
     test = True
-    writer = SummaryWriter('runs/exp-1')
+    boardX = True
+    if boardX:
+        from tensorboardX import SummaryWriter
+        writer = SummaryWriter('runs/GAN')
 
     print('Reading the training data of face...',)
     sys.stdout.flush()
@@ -135,88 +105,138 @@ if __name__ == '__main__':
     face_list.sort()
     n_faces = len(face_list)
     h, w, d = 64, 64, 3
-    train_np = np.empty((n_faces, h, w, d), dtype='float32')
+    true_np = np.empty((n_faces, h, w, d), dtype='float32')
 
     for i, file in enumerate(face_list):
-        train_np[i] = mpimg.imread(os.path.join(filepath, file))*2-1
+        true_np[i] = mpimg.imread(os.path.join(filepath, file))*2-1
     print("Done!")
 
     #Turn the np dataset to Tensor
-    train_ts = torch.from_numpy(train_np.transpose((0, 3, 1, 2))).cuda()
-    train_set = Data.TensorDataset(data_tensor=train_ts, target_tensor=train_ts)
+    true_ts = torch.from_numpy(true_np.transpose((0, 3, 1, 2))).cuda()
+    #target_ts = torch.ones(len(n_faces),1)
+    true_label_ts = torch.from_numpy(0.5*np.random.rand(len(n_faces),1)+0.7)
+    true_set = Data.TensorDataset(data_tensor=train_ts, target_tensor=ture_label_ts)
 
-    dataloader = Data.DataLoader(dataset=train_set, 
+    true_dataloader = Data.DataLoader(dataset=true_set, 
                                     batch_size=batch_size, 
                                     shuffle=True)
-    del train_np
+    del true_np
 
-    if test:
-        print('Reading the testing data of face...', )
-        sys.stdout.flush()
-        filepath = '../data/hw4_dataset/test/'
-        face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
-        face_list.sort()
-        n_faces = 10
-        h, w, d = 64, 64, 3
-        test_np = np.empty((n_faces, h, w, d), dtype='float32')
+    #print('Reading the more data of face...', )
+    #sys.stdout.flush()
+    #filepath = '../data/hw4_dataset/test/'
+    #face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
+    #face_list.sort()
+    #n_faces = 10
+    #h, w, d = 64, 64, 3
+    #test_np = np.empty((n_faces, h, w, d), dtype='float32')
 
-        for i, file in enumerate(face_list[0:10]):
-            test_np[i] = mpimg.imread(os.path.join(filepath, file))*2-1
-        print("Done!")
-        test_ts = torch.from_numpy(test_np.transpose((0, 3, 1, 2))).cuda()
+    #for i, file in enumerate(face_list[0:10]):
+    #    test_np[i] = mpimg.imread(os.path.join(filepath, file))*2-1
+    #print("Done!")
+    #test_ts = torch.from_numpy(test_np.transpose((0, 3, 1, 2))).cuda()
 
 
-    encoder = Encoder(3)
-    decoder = Decoder(1024)
-    vae = VAE(encoder, decoder)
-    vae.cuda()
+    G = Generator(1024)
+    D = Discriminator(3)
+    G.cuda()
+    D.cuda()
 
-    criterion = nn.MSELoss()
-    lambda_KL = float(sys.argv[1])
+    G_optimizer = optim.Adam(G.parameters(), lr=1e-4, betas=(0.5,0.999))
+    D_optimizer = optim.Adam(D.parameters(), lr=1e-4, betas=(0.5,0.999))
 
-    optimizer = optim.Adam(vae.parameters(), lr=1e-4, betas=(0.5,0.999))
+    criterion = nn.BCELoss()
 
     #training with 40000 face images
+    G.train()
+    D.train()
     for epoch in range(epochs):
         start_time=time.time()
-        vae.train()
-        train_loss = 0
-        for batch_idx, (b_img, b_tar) in enumerate(dataloader):
-            optimizer.zero_grad()
-            inputs = Variable(b_img).cuda()
-            dec = vae(inputs)    
-            ll = latent_loss(vae.z_mean, vae.z_sigma)
-            MSE = criterion(dec, inputs) 
-            writer.add_scalar('KLD', ll.data[0],  epoch*len(dataloader.dataset)/batch_size+batch_idx)
-            writer.add_scalar('MSE', MSE.data[0], epoch*len(dataloader.dataset)/batch_size+batch_idx)
-            loss = MSE + lambda_KL * ll
-            loss.backward()
-            optimizer.step()
-            train_loss += loss.data[0]
-            sys.stdout.write('\rEpoch: {} [{}/{}]\tLoss: {:.6f}\tMSE:{:.6f} KLD:{:.6f}\tTime:{:.1f}'.format(
-                epoch+1, (batch_idx+1) * len(b_img), len(dataloader.dataset),
-                loss.data[0]/len(inputs),
-                MSE.data[0],
-                ll.data[0],
+        G_loss = 0
+        R_loss = 0
+        F_loss = 0
+        #######################
+        #  Update D network   #
+        #######################
+        for d in D.parameters():
+            d.requires_grad = True
+        for batch_idx, (b_img, b_tar) in enumerate(true_dataloader):
+            # Train D with real data
+            D_optimizer.zero_grad()
+            true_inputs = Variable(b_img).cuda()
+            true_labels = Variable(b_tar).cuda()
+            D_real_labels = D(true_inputs)
+            real_loss = criterion(D_real_labels, true_labels)
+            real_loss.backward()
+
+            # Train D with fake data
+            D_sample = Variable(torch.randn(batch_size, 1024, 1)).cuda()
+            fake_inputs = G(D_sample).detach()
+            fake_labels = Variable(torch.from_numpy(0.3*np.random.rand(len(batch_size),1))).cuda()
+            D_fake_labels = D(fake_inputs)
+            fake_loss = criterion(D_fake_labels, fake_labels)
+            fake_loss.backward()
+            if boardX:
+                writer.add_scalars('Loss of Discriminator', {'Real': real_loss.data[0], 'Fake':fake_loss.data[0]},
+                                    epoch*len(true_dataloader.dataset)/batch_size+batch_idx)
+
+            D_optimizer.step()
+            R_loss += real_loss.data[0]
+            F_loss += fake_loss.data[0]
+            sys.stdout.write('\rEpoch: {} [{}/{}]\tLoss_D: {:.5f}(R:{:.5f} + F:{:.5f})\tLoss_G: {:.5f}\tTime:{:.1f}'.format(
+                epoch+1, (batch_idx+1) * len(b_img), len(true_dataloader.dataset),
+                real_loss.data[0]+fake_loss.data[0],
+                real_loss.data[0],
+                fake_loss.data[0],
+                0,
                 time.time()-start_time))
             sys.stdout.flush()
 
-        print('===> Average loss: {:.4f}'.format(train_loss/len(dataloader.dataset)))
+        #######################
+        #  Update G network   #
+        #######################
+        for d in D.parameters():
+            d.requires_grad = False
+        for batch_idx in range(2000):
+            # Train D with real data
+            G_optimizer.zero_grad()
+            G_sample = Variable(torch.randn(batch_size, 1024, 1)).cuda()
+            G_fake_inputs = G(G_sample)
+            #fool the Discriminator
+            G_fake_labels = Variable(torch.from_numpy(0.5*np.random.rand(len(batch_size),1)+0.7)).cuda()
+            DG_fake_labels = D(G_fake_inputs)
+            g_loss = criterion(DG_fake_labels, G_fake_labels)
+            g_loss.backward()
+            G_optimizer.step()
+
+
+            G_loss += g_loss.data[0]
+            sys.stdout.write('\rEpoch: {} [{}/{}]\tLoss_D: {:.5f}(R:{:.5f} + F:{:.5f})\tLoss_G: {:.5f}\tTime:{:.1f}'.format(
+                epoch+1, (batch_idx+1) * len(b_img), len(true_dataloader.dataset),
+                real_loss.data[0]+fake_loss.data[0],
+                real_loss.data[0],
+                fake_loss.data[0],
+                g_loss.data[0],
+                time.time()-start_time))
+            sys.stdout.flush()
+
+        print('===> <Average> D_loss(R/F): {:.4f}/{:.4f} G_loss: {:.4f}'.format(R_loss/len(true_dataloader.dataset),
+                                                                                F_loss/len(true_dataloader.dataset),
+                                                                                G_loss/len(true_dataloader.dataset)))
             
         if test:
-            #reconstruct some images
-            inputs = Variable(test_ts).cuda()
-            vae.eval()
-            recon_test = vae(inputs)
-            recon_test = recon_test.data.cpu().numpy()
-            recon_test = recon_test.transpose((0, 2, 3, 1))
-            result = np.zeros((128,640,3)) 
-            for i in range(10):
-                result[0:64, (0+i*64):(64+64*i), :] = test_np[i,:,:,:]
-                result[64:128, (0+i*64):(64+64*i), :] = recon_test[i,:,:,:]
-            writer.add_image('test_imresult'+str(epoch+1), (result+1)/2, epoch+1)
+            #generate some images
+            G.eval()
+            sample = Variable(torch.randn(32, 1024, 1)).cuda()
+            gen_images = G(sample)
+            gen_images = gen_images.data.cpu().numpy()
+            gen_images = gen_images.transpose((0, 2, 3, 1))
+            result = np.zeros((256,512,3)) 
+            for i in range(32):
+                h = int(i / 8)
+                w = i % 8
+                result[(0+h*64):(64+64*h), (0+w*64):(64+64*w), :] = gen_np[i,:,:,:]
+            writer.add_image('test_imresult', (result+1)/2, epoch+1)
 
-            if (epoch+1) %  5 == 0 or (epoch == 0):
-                mpimg.imsave('e'+str(epoch+1)+'_lKL'+sys.argv[1]+'.png', (result+1)/2)
-        if (epoch+1) >= 100:
-            torch.save(vae, 'e'+str(epoch+1)+'_lKL'+sys.argv[1]+'.pt')
+    torch.save(G, 'GAN_G_e50_.pt')
+    torch.save(D, 'GAN_D_e50_.pt')
