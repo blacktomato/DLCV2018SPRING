@@ -4,12 +4,13 @@
  # File Name : VAE.py
  # Purpose : Training a Variational AutoEncoder model
  # Creation Date : 2018年05月03日 (週四) 13時34分13秒
- # Last Modified : 廿十八年五月十一日 (週五) 廿三時40分39秒
+ # Last Modified : 2018年05月12日 (週六) 15時37分17秒
  # Created By : SL Chung
 ##############################################################
 import sys
 import os
 import numpy as np
+import time
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
@@ -122,9 +123,11 @@ def latent_loss(z_mean, z_stddev):
 
 if __name__ == '__main__':
     batch_size = 20
-    epochs = 1
+    epochs = 100
+    test = True
+    writer = SummaryWriter('runs/exp-1')
 
-    print('Reading the training data of face...', end='')
+    print('Reading the training data of face...',)
     sys.stdout.flush()
 
     filepath = '../data/hw4_dataset/train/'
@@ -147,19 +150,20 @@ if __name__ == '__main__':
                                     shuffle=True)
     del train_np
 
-    print('Reading the testing data of face...', end='')
-    sys.stdout.flush()
-    filepath = '../data/hw4_dataset/test/'
-    face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
-    face_list.sort()
-    n_faces = 10
-    h, w, d = 64, 64, 3
-    test_np = np.empty((n_faces, h, w, d), dtype='float32')
+    if test:
+        print('Reading the testing data of face...', )
+        sys.stdout.flush()
+        filepath = '../data/hw4_dataset/test/'
+        face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
+        face_list.sort()
+        n_faces = 10
+        h, w, d = 64, 64, 3
+        test_np = np.empty((n_faces, h, w, d), dtype='float32')
 
-    for i, file in enumerate(face_list[0:10]):
-        test_np[i] = mpimg.imread(os.path.join(filepath, file))*2-1
-    print("Done!")
-    test_ts = torch.from_numpy(test_np.transpose((0, 3, 1, 2))).cuda()
+        for i, file in enumerate(face_list[0:10]):
+            test_np[i] = mpimg.imread(os.path.join(filepath, file))*2-1
+        print("Done!")
+        test_ts = torch.from_numpy(test_np.transpose((0, 3, 1, 2))).cuda()
 
 
     encoder = Encoder(3)
@@ -168,12 +172,13 @@ if __name__ == '__main__':
     vae.cuda()
 
     criterion = nn.MSELoss()
-    lambda_KL = 1e-5
+    lambda_KL = float(sys.argv[1])
 
     optimizer = optim.Adam(vae.parameters(), lr=1e-4, betas=(0.5,0.999))
 
     #training with 40000 face images
     for epoch in range(epochs):
+        start_time=time.time()
         vae.train()
         train_loss = 0
         for batch_idx, (b_img, b_tar) in enumerate(dataloader):
@@ -181,30 +186,37 @@ if __name__ == '__main__':
             inputs = Variable(b_img).cuda()
             dec = vae(inputs)    
             ll = latent_loss(vae.z_mean, vae.z_sigma)
-            loss = criterion(dec, inputs) + lambda_KL * ll
+            MSE = criterion(dec, inputs) 
+            writer.add_scalar('KLD', ll.data[0],  epoch*len(dataloader.dataset)/batch_size+batch_idx)
+            writer.add_scalar('MSE', MSE.data[0], epoch*len(dataloader.dataset)/batch_size+batch_idx)
+            loss = MSE + lambda_KL * ll
             loss.backward()
             optimizer.step()
             train_loss += loss.data[0]
-            sys.stdout.write('\rTrain Epoch: {} [{}/{}]\tLoss: {:.6f}\tMSE:{:.6f}\tKLD:{:.6f}'.format(
-                epoch, (batch_idx+1) * len(b_img), len(dataloader.dataset),
+            sys.stdout.write('\rEpoch: {} [{}/{}]\tLoss: {:.6f}\tMSE:{:.6f} KLD:{:.6f}\tTime:{:.1f}'.format(
+                epoch+1, (batch_idx+1) * len(b_img), len(dataloader.dataset),
                 loss.data[0]/len(inputs),
-                criterion(dec, inputs).data[0],
-                ll.data[0]))
+                MSE.data[0],
+                ll.data[0],
+                time.time()-start_time))
+            sys.stdout.flush()
 
-        print('===> Epoch: {} Average loss: {:.4f}'.format(epoch, train_loss/len(dataloader.dataset)))
+        print('===> Average loss: {:.4f}'.format(train_loss/len(dataloader.dataset)))
             
-    #reconstruct some images
-    inputs = Variable(test_ts).cuda()
-    vae.test()
-    recon_test = vae(inputs)
-    recon_test = recon_test.data.cpu().numpy()
-    recon_test = recon_test.transpose((0, 2, 3, 1))
-    temp_origin = np.zeros((64,0,3)) 
-    temp_recons = np.empty((64,0,3)) 
-    for i in range(10):
-        temp_origin = np.hstack((temp_origin, test_np[i,:,:,:]))
-        temp_recons = np.hstack((temp_recons, recon_np[i,:,:,:]))
-    
-    result = np.vstack((temp_origin, temp_recons))
-    mpimg.imsave(sys.argv[1], (result+1)/2)
-    
+        if test:
+            #reconstruct some images
+            inputs = Variable(test_ts).cuda()
+            vae.eval()
+            recon_test = vae(inputs)
+            recon_test = recon_test.data.cpu().numpy()
+            recon_test = recon_test.transpose((0, 2, 3, 1))
+            result = np.zeros((128,640,3)) 
+            for i in range(10):
+                result[0:64, (0+i*64):(64+64*i), :] = test_np[i,:,:,:]
+                result[64:128, (0+i*64):(64+64*i), :] = recon_test[i,:,:,:]
+            writer.add_image('test_imresult'+str(epoch+1), (result+1)/2, epoch+1)
+
+            if (epoch+1) %  5 == 0 or (epoch == 0):
+                mpimg.imsave('e'+str(epoch+1)+'_lKL'+sys.argv[1]+'.png', (result+1)/2)
+        if (epoch+1) >= 100:
+            torch.save(vae, 'e'+str(epoch+1)+'_lKL'+sys.argv[1]+'.pt')
