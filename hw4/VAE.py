@@ -4,7 +4,7 @@
  # File Name : VAE.py
  # Purpose : Training a Variational AutoEncoder model
  # Creation Date : 2018年05月03日 (週四) 13時34分13秒
- # Last Modified : 2018年05月12日 (週六) 15時37分17秒
+ # Last Modified : 廿十八年五月十二日 (週六) 十六時47分十八秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -23,10 +23,6 @@ import torch.optim as optim
 import torch.utils.data as Data
 import torchvision
 from torchvision import transforms
-
-boardX = True
-if boardX:
-    from tensorboardX import SummaryWriter
 
 class Encoder(nn.Module): 
     def __init__(self, D_in):
@@ -125,9 +121,12 @@ if __name__ == '__main__':
     batch_size = 20
     epochs = 100
     test = True
-    writer = SummaryWriter('runs/exp-1')
+    boardX = False
+    if boardX:
+        from tensorboardX import SummaryWriter
+        writer = SummaryWriter('runs/exp-1')
 
-    print('Reading the training data of face...',)
+    print('Reading the training data of face...',end='')
     sys.stdout.flush()
 
     filepath = '../data/hw4_dataset/train/'
@@ -151,7 +150,7 @@ if __name__ == '__main__':
     del train_np
 
     if test:
-        print('Reading the testing data of face...', )
+        print('Reading the testing data of face...', end='')
         sys.stdout.flush()
         filepath = '../data/hw4_dataset/test/'
         face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
@@ -187,8 +186,9 @@ if __name__ == '__main__':
             dec = vae(inputs)    
             ll = latent_loss(vae.z_mean, vae.z_sigma)
             MSE = criterion(dec, inputs) 
-            writer.add_scalar('KLD', ll.data[0],  epoch*len(dataloader.dataset)/batch_size+batch_idx)
-            writer.add_scalar('MSE', MSE.data[0], epoch*len(dataloader.dataset)/batch_size+batch_idx)
+            if boardX:
+                writer.add_scalar('KLD', ll.data[0],  epoch*len(dataloader.dataset)/batch_size+batch_idx)
+                writer.add_scalar('MSE', MSE.data[0], epoch*len(dataloader.dataset)/batch_size+batch_idx)
             loss = MSE + lambda_KL * ll
             loss.backward()
             optimizer.step()
@@ -214,7 +214,8 @@ if __name__ == '__main__':
             for i in range(10):
                 result[0:64, (0+i*64):(64+64*i), :] = test_np[i,:,:,:]
                 result[64:128, (0+i*64):(64+64*i), :] = recon_test[i,:,:,:]
-            writer.add_image('test_imresult'+str(epoch+1), (result+1)/2, epoch+1)
+            if boardX:
+                writer.add_image('test_imresult'+str(epoch+1), (result+1)/2, epoch+1)
 
             if (epoch+1) %  5 == 0 or (epoch == 0):
                 mpimg.imsave('e'+str(epoch+1)+'_lKL'+sys.argv[1]+'.png', (result+1)/2)
