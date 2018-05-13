@@ -4,7 +4,7 @@
  # File Name : GAN.py
  # Purpose : Training a GAN model
  # Creation Date : 2018年05月03日 (週四) 13時36分05秒
- # Last Modified : 廿十八年五月十三日 (週日) 一時39分七秒
+ # Last Modified : 2018年05月13日 (週日) 11時25分27秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -40,8 +40,10 @@ class Generator(nn.Module):
         self.bn4 = nn.BatchNorm2d(ndf*4)
         self.convtrans5 = nn.ConvTranspose2d( ndf*4 , ndf*2 , (4,4), stride=2, padding=1)
         self.bn5 = nn.BatchNorm2d(ndf*2)
+        self.drop1 = nn.Dropout(0.5)
         self.convtrans6 = nn.ConvTranspose2d( ndf*2 , ndf   , (4,4), stride=2, padding=1)
         self.bn6 = nn.BatchNorm2d(ndf)
+        self.drop2 = nn.Dropout(0.5)
 
         self.convtrans7 = nn.ConvTranspose2d( ndf   ,      3, (4,4), stride=2, padding=1)
         self.bn7 = nn.BatchNorm2d(3)
@@ -51,8 +53,8 @@ class Generator(nn.Module):
         x = F.leaky_relu(self.bn2(self.convtrans2(x))) 
         x = F.leaky_relu(self.bn3(self.convtrans3(x))) 
         x = F.leaky_relu(self.bn4(self.convtrans4(x))) 
-        x = F.leaky_relu(self.bn5(self.convtrans5(x))) 
-        x = F.leaky_relu(self.bn6(self.convtrans6(x))) 
+        x = F.leaky_relu(self.drop1(self.bn5(self.convtrans5(x))))
+        x = F.leaky_relu(self.drop2(self.bn6(self.convtrans6(x)))) 
         return F.tanh(self.bn7(self.convtrans7(x))) 
 
 class Discriminator(nn.Module): 
@@ -70,12 +72,10 @@ class Discriminator(nn.Module):
         self.bn4 = nn.BatchNorm2d(ndf*8)
         self.conv5 = nn.Conv2d( ndf*8 , ndf*16, (3,3), stride=2, padding=1)
         self.bn5 = nn.BatchNorm2d(ndf*16)
-        self.drop1 = nn.Dropout(0.5)
-        self.conv6 = nn.Conv2d( ndf*16 ,ndf*16, (3,3), stride=2, padding=1)
+        self.conv6 = nn.Conv2d( ndf*16, ndf*16, (3,3), stride=2, padding=1)
         self.bn6 = nn.BatchNorm2d(ndf*16)
-        self.drop2 = nn.Dropout(0.5)
         #1024 dims
-        self.conv7 = nn.Conv2d( 1, ndf*16, (1,1))
+        self.conv7 = nn.Conv2d( ndf*16,      1, (1,1))
         self.bn7 = nn.BatchNorm2d(1)
 
     def forward(self, x):
@@ -83,19 +83,19 @@ class Discriminator(nn.Module):
         x = F.leaky_relu(self.bn2(self.conv2(x))) 
         x = F.leaky_relu(self.bn3(self.conv3(x))) 
         x = F.leaky_relu(self.bn4(self.conv4(x))) 
-        x = F.leaky_relu(self.drop1(self.bn5(self.conv5(x)))) 
-        x = F.leaky_relu(self.drop2(self.bn6(self.conv6(x))))
-        x = F.leaky_relu(self.bn7(self.conv7(x)))
+        x = F.leaky_relu(self.bn5(self.conv5(x))) 
+        x = F.leaky_relu(self.bn6(self.conv6(x)))
+        x = F.sigmoid(self.bn7(self.conv7(x)))
         return x
 
 if __name__ == '__main__':
     batch_size = 20
-    epochs = 5
+    epochs = 50
     test = True
     boardX = True
     if boardX:
         from tensorboardX import SummaryWriter
-        writer = SummaryWriter('runs/GAN')
+        writer = SummaryWriter('runs/'+sys.argv[1])
 
     print('Reading the training data of face...',)
     sys.stdout.flush()
@@ -113,9 +113,9 @@ if __name__ == '__main__':
 
     #Turn the np dataset to Tensor
     true_ts = torch.from_numpy(true_np.transpose((0, 3, 1, 2))).cuda()
-    #target_ts = torch.ones(len(n_faces),1)
-    true_label_ts = torch.from_numpy(0.5*np.random.rand(len(n_faces),1)+0.7)
-    true_set = Data.TensorDataset(data_tensor=train_ts, target_tensor=ture_label_ts)
+    #target_ts = torch.ones(n_faces,1)
+    true_label_ts = torch.from_numpy(0.3*np.random.rand(n_faces,1).astype('float32')+0.7)
+    true_set = Data.TensorDataset(data_tensor=true_ts, target_tensor=true_label_ts)
 
     true_dataloader = Data.DataLoader(dataset=true_set, 
                                     batch_size=batch_size, 
@@ -145,11 +145,12 @@ if __name__ == '__main__':
     G_optimizer = optim.Adam(G.parameters(), lr=1e-4, betas=(0.5,0.999))
     D_optimizer = optim.Adam(D.parameters(), lr=1e-4, betas=(0.5,0.999))
 
-    criterion = nn.BCELoss()
+    criterion = nn.BCELoss().cuda()
 
     #training with 40000 face images
     G.train()
     D.train()
+    test_sample = Variable(torch.rand(32, 1024, 1, 1)).cuda()
     for epoch in range(epochs):
         start_time=time.time()
         G_loss = 0
@@ -170,9 +171,9 @@ if __name__ == '__main__':
             real_loss.backward()
 
             # Train D with fake data
-            D_sample = Variable(torch.randn(batch_size, 1024, 1)).cuda()
+            D_sample = Variable(torch.rand(batch_size, 1024, 1, 1)).cuda()
             fake_inputs = G(D_sample).detach()
-            fake_labels = Variable(torch.from_numpy(0.3*np.random.rand(len(batch_size),1))).cuda()
+            fake_labels = Variable(torch.from_numpy(0.3*np.random.rand(batch_size,1).astype('float32'))).cuda()
             D_fake_labels = D(fake_inputs)
             fake_loss = criterion(D_fake_labels, fake_labels)
             fake_loss.backward()
@@ -200,14 +201,17 @@ if __name__ == '__main__':
         for batch_idx in range(2000):
             # Train D with real data
             G_optimizer.zero_grad()
-            G_sample = Variable(torch.randn(batch_size, 1024, 1)).cuda()
+            G_sample = Variable(torch.rand(batch_size, 1024, 1, 1)).cuda()
             G_fake_inputs = G(G_sample)
             #fool the Discriminator
-            G_fake_labels = Variable(torch.from_numpy(0.5*np.random.rand(len(batch_size),1)+0.7)).cuda()
+            G_fake_labels = Variable(torch.from_numpy(0.3*np.random.rand(batch_size,1).astype('float32')+0.7)).cuda()
             DG_fake_labels = D(G_fake_inputs)
             g_loss = criterion(DG_fake_labels, G_fake_labels)
             g_loss.backward()
             G_optimizer.step()
+            if boardX:
+                writer.add_scalar('Loss of Generator', g_loss.data[0],
+                                    epoch*len(true_dataloader.dataset)/batch_size+batch_idx)
 
 
             G_loss += g_loss.data[0]
@@ -227,15 +231,14 @@ if __name__ == '__main__':
         if test:
             #generate some images
             G.eval()
-            sample = Variable(torch.randn(32, 1024, 1)).cuda()
-            gen_images = G(sample)
+            gen_images = G(test_sample)
             gen_images = gen_images.data.cpu().numpy()
             gen_images = gen_images.transpose((0, 2, 3, 1))
             result = np.zeros((256,512,3)) 
             for i in range(32):
                 h = int(i / 8)
                 w = i % 8
-                result[(0+h*64):(64+64*h), (0+w*64):(64+64*w), :] = gen_np[i,:,:,:]
+                result[(0+h*64):(64+64*h), (0+w*64):(64+64*w), :] = gen_images[i,:,:,:]
             writer.add_image('test_imresult', (result+1)/2, epoch+1)
 
     torch.save(G, 'GAN_G_e50_.pt')
