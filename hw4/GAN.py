@@ -4,7 +4,7 @@
  # File Name : GAN.py
  # Purpose : Training a GAN model
  # Creation Date : 2018年05月03日 (週四) 13時36分05秒
- # Last Modified : 2018年05月13日 (週日) 18時14分45秒
+ # Last Modified : 廿十八年五月十四日 (週一) 十三時48分49秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -24,62 +24,64 @@ import torch.utils.data as Data
 import torchvision
 from torchvision import transforms
 
-
 class Generator(nn.Module):
     def __init__(self, D_in):
         super(Generator, self).__init__()
         ndf = 64
-        self.convtrans1 = nn.ConvTranspose2d(   D_in, ndf*16, (2,2))
+        self.convtrans1 = nn.ConvTranspose2d(   D_in, ndf*16, (4,4))
         self.bn1 = nn.BatchNorm2d(ndf*16)
-        self.convtrans2 = nn.ConvTranspose2d( ndf*16, ndf*8 , (3,3))
+        self.convtrans2 = nn.ConvTranspose2d( ndf*16, ndf*8 , (4,4), stride=2, padding=1)
         self.bn2 = nn.BatchNorm2d(ndf*8)
         self.convtrans3 = nn.ConvTranspose2d( ndf*8 , ndf*4 , (4,4), stride=2, padding=1)
         self.bn3 = nn.BatchNorm2d(ndf*4)
         self.convtrans4 = nn.ConvTranspose2d( ndf*4 , ndf*2 , (4,4), stride=2, padding=1)
         self.bn4 = nn.BatchNorm2d(ndf*2)
         self.drop1 = nn.Dropout(0.5)
-        self.convtrans5 = nn.ConvTranspose2d( ndf*2 , ndf   , (4,4), stride=2, padding=1)
-        self.bn5 = nn.BatchNorm2d(ndf)
+        self.convtrans5 = nn.ConvTranspose2d( ndf*2 ,     3, (4,4), stride=2, padding=1)
         self.drop2 = nn.Dropout(0.5)
-
-        self.convtrans6 = nn.ConvTranspose2d( ndf   ,      3, (4,4), stride=2, padding=1)
-
+        
+    def weight_init(self, mean, std):
+        for m in self._modules:
+            normal_init(self._modules[m], mean, std)
+        
     def forward(self, x):
         x = F.leaky_relu(self.bn1(self.convtrans1(x))) 
         x = F.leaky_relu(self.bn2(self.convtrans2(x))) 
         x = F.leaky_relu(self.bn3(self.convtrans3(x))) 
         x = F.leaky_relu(self.bn4(self.convtrans4(x))) 
-        x = F.leaky_relu(self.bn5(self.convtrans5(x)))
-        return F.tanh(self.convtrans6(x)) 
+        return F.tanh(self.convtrans5(x)) 
 
 class Discriminator(nn.Module): 
     def __init__(self, D_in):
         super(Discriminator, self).__init__()
         #for 64x64 images
         ndf = 64
-        self.conv1 = nn.Conv2d(D_in, ndf, (3,3), stride=2, padding=1)
-        self.bn1 = nn.BatchNorm2d(ndf)
-        self.conv2 = nn.Conv2d( ndf   ,  ndf*2, (3,3), stride=2, padding=1)
-        self.bn2 = nn.BatchNorm2d(ndf*2)
-        self.conv3 = nn.Conv2d( ndf*2 ,  ndf*4, (3,3), stride=2, padding=1)
-        self.bn3 = nn.BatchNorm2d(ndf*4)
-        self.conv4 = nn.Conv2d( ndf*4 ,  ndf*8, (3,3), stride=2, padding=1)
-        self.bn4 = nn.BatchNorm2d(ndf*8)
-        self.conv5 = nn.Conv2d( ndf*8 , ndf*16, (3,3), stride=2, padding=1)
-        self.bn5 = nn.BatchNorm2d(ndf*16)
-        self.conv6 = nn.Conv2d( ndf*16, ndf*16, (3,3), stride=2, padding=1)
-        self.bn6 = nn.BatchNorm2d(ndf*16)
-        self.conv7 = nn.Conv2d( ndf*16,      1, (1,1))
+        self.conv1 = nn.Conv2d(D_in   ,  ndf*2, (4,4), stride=2, padding=1)
+        self.bn1 = nn.BatchNorm2d(ndf*2)
+        self.conv2 = nn.Conv2d( ndf*2 ,  ndf*4, (4,4), stride=2, padding=1)
+        self.bn2 = nn.BatchNorm2d(ndf*4)
+        self.conv3 = nn.Conv2d( ndf*4 ,  ndf*8, (4,4), stride=2, padding=1)
+        self.bn3 = nn.BatchNorm2d(ndf*8)
+        self.conv4 = nn.Conv2d( ndf*8 , ndf*16, (4,4), stride=2, padding=1)
+        self.bn4 = nn.BatchNorm2d(ndf*16)
+        self.conv5 = nn.Conv2d( ndf*16 ,     1, (4,4), stride=1)
+        
+    def weight_init(self, mean, std):
+        for m in self._modules:
+            normal_init(self._modules[m], mean, std)
 
     def forward(self, x):
         x = F.leaky_relu(self.bn1(self.conv1(x))) 
         x = F.leaky_relu(self.bn2(self.conv2(x))) 
         x = F.leaky_relu(self.bn3(self.conv3(x))) 
         x = F.leaky_relu(self.bn4(self.conv4(x))) 
-        x = F.leaky_relu(self.bn5(self.conv5(x))) 
-        x = F.leaky_relu(self.bn6(self.conv6(x)))
-        x = F.sigmoid(self.conv7(x))
+        x = F.sigmoid(self.conv5(x))
         return x
+
+def normal_init(m, mean, std):
+    if isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Conv2d):
+        m.weight.data.normal_(mean, std)
+        m.bias.data.zero_()
 
 if __name__ == '__main__':
     batch_size = 20
@@ -132,6 +134,8 @@ if __name__ == '__main__':
     G_in = 100
     G = Generator(G_in)
     D = Discriminator(3)
+    G.weight_init(mean=0.0, std=0.02)
+    D.weight_init(mean=0.0, std=0.02)
     G.cuda()
     D.cuda()
 
