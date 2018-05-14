@@ -4,7 +4,7 @@
  # File Name : GAN.py
  # Purpose : Training a GAN model
  # Creation Date : 2018年05月03日 (週四) 13時36分05秒
- # Last Modified : 廿十八年五月十四日 (週一) 十三時48分49秒
+ # Last Modified : 2018年05月14日 (週一) 17時23分20秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -85,7 +85,7 @@ def normal_init(m, mean, std):
 
 if __name__ == '__main__':
     batch_size = 20
-    epochs = 50
+    epochs = 25
     test = True
     boardX = True
     if boardX:
@@ -225,5 +225,5 @@ if __name__ == '__main__':
                 result[(0+h*64):(64+64*h), (0+w*64):(64+64*w), :] = gen_images[i,:,:,:]
             writer.add_image('test_imresult', (result+1)/2, epoch+1)
 
-    torch.save(G, 'GAN_G_e50_.pt')
-    torch.save(D, 'GAN_D_e50_.pt')
+    torch.save(G, 'GAN_G_e25_.pt')
+    torch.save(D, 'GAN_D_e25_.pt')
