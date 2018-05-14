@@ -4,7 +4,7 @@
  # File Name : GAN.py
  # Purpose : Training a GAN model
  # Creation Date : 2018年05月03日 (週四) 13時36分05秒
- # Last Modified : 2018年05月13日 (週日) 11時25分27秒
+ # Last Modified : 2018年05月13日 (週日) 18時14分45秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -29,33 +29,28 @@ class Generator(nn.Module):
     def __init__(self, D_in):
         super(Generator, self).__init__()
         ndf = 64
-        #decode 1024 dims vector
-        self.convtrans1 = nn.ConvTranspose2d(   D_in, ndf*16, (1,1))
+        self.convtrans1 = nn.ConvTranspose2d(   D_in, ndf*16, (2,2))
         self.bn1 = nn.BatchNorm2d(ndf*16)
-        self.convtrans2 = nn.ConvTranspose2d( ndf*16, ndf*16, (2,2))
-        self.bn2 = nn.BatchNorm2d(ndf*16)
-        self.convtrans3 = nn.ConvTranspose2d( ndf*16, ndf*8 , (3,3))
-        self.bn3 = nn.BatchNorm2d(ndf*8)
-        self.convtrans4 = nn.ConvTranspose2d( ndf*8 , ndf*4 , (4,4), stride=2, padding=1)
-        self.bn4 = nn.BatchNorm2d(ndf*4)
-        self.convtrans5 = nn.ConvTranspose2d( ndf*4 , ndf*2 , (4,4), stride=2, padding=1)
-        self.bn5 = nn.BatchNorm2d(ndf*2)
+        self.convtrans2 = nn.ConvTranspose2d( ndf*16, ndf*8 , (3,3))
+        self.bn2 = nn.BatchNorm2d(ndf*8)
+        self.convtrans3 = nn.ConvTranspose2d( ndf*8 , ndf*4 , (4,4), stride=2, padding=1)
+        self.bn3 = nn.BatchNorm2d(ndf*4)
+        self.convtrans4 = nn.ConvTranspose2d( ndf*4 , ndf*2 , (4,4), stride=2, padding=1)
+        self.bn4 = nn.BatchNorm2d(ndf*2)
         self.drop1 = nn.Dropout(0.5)
-        self.convtrans6 = nn.ConvTranspose2d( ndf*2 , ndf   , (4,4), stride=2, padding=1)
-        self.bn6 = nn.BatchNorm2d(ndf)
+        self.convtrans5 = nn.ConvTranspose2d( ndf*2 , ndf   , (4,4), stride=2, padding=1)
+        self.bn5 = nn.BatchNorm2d(ndf)
         self.drop2 = nn.Dropout(0.5)
 
-        self.convtrans7 = nn.ConvTranspose2d( ndf   ,      3, (4,4), stride=2, padding=1)
-        self.bn7 = nn.BatchNorm2d(3)
+        self.convtrans6 = nn.ConvTranspose2d( ndf   ,      3, (4,4), stride=2, padding=1)
 
     def forward(self, x):
         x = F.leaky_relu(self.bn1(self.convtrans1(x))) 
         x = F.leaky_relu(self.bn2(self.convtrans2(x))) 
         x = F.leaky_relu(self.bn3(self.convtrans3(x))) 
         x = F.leaky_relu(self.bn4(self.convtrans4(x))) 
-        x = F.leaky_relu(self.drop1(self.bn5(self.convtrans5(x))))
-        x = F.leaky_relu(self.drop2(self.bn6(self.convtrans6(x)))) 
-        return F.tanh(self.bn7(self.convtrans7(x))) 
+        x = F.leaky_relu(self.bn5(self.convtrans5(x)))
+        return F.tanh(self.convtrans6(x)) 
 
 class Discriminator(nn.Module): 
     def __init__(self, D_in):
@@ -74,9 +69,7 @@ class Discriminator(nn.Module):
         self.bn5 = nn.BatchNorm2d(ndf*16)
         self.conv6 = nn.Conv2d( ndf*16, ndf*16, (3,3), stride=2, padding=1)
         self.bn6 = nn.BatchNorm2d(ndf*16)
-        #1024 dims
         self.conv7 = nn.Conv2d( ndf*16,      1, (1,1))
-        self.bn7 = nn.BatchNorm2d(1)
 
     def forward(self, x):
         x = F.leaky_relu(self.bn1(self.conv1(x))) 
@@ -85,7 +78,7 @@ class Discriminator(nn.Module):
         x = F.leaky_relu(self.bn4(self.conv4(x))) 
         x = F.leaky_relu(self.bn5(self.conv5(x))) 
         x = F.leaky_relu(self.bn6(self.conv6(x)))
-        x = F.sigmoid(self.bn7(self.conv7(x)))
+        x = F.sigmoid(self.conv7(x))
         return x
 
 if __name__ == '__main__':
@@ -136,8 +129,8 @@ if __name__ == '__main__':
     #print("Done!")
     #test_ts = torch.from_numpy(test_np.transpose((0, 3, 1, 2))).cuda()
 
-
-    G = Generator(1024)
+    G_in = 100
+    G = Generator(G_in)
     D = Discriminator(3)
     G.cuda()
     D.cuda()
@@ -150,18 +143,16 @@ if __name__ == '__main__':
     #training with 40000 face images
     G.train()
     D.train()
-    test_sample = Variable(torch.rand(32, 1024, 1, 1)).cuda()
+    test_sample = Variable(torch.randn(32, G_in, 1, 1)).cuda()
     for epoch in range(epochs):
         start_time=time.time()
         G_loss = 0
         R_loss = 0
         F_loss = 0
-        #######################
-        #  Update D network   #
-        #######################
-        for d in D.parameters():
-            d.requires_grad = True
         for batch_idx, (b_img, b_tar) in enumerate(true_dataloader):
+            #######################
+            #  Update D network   #
+            #######################
             # Train D with real data
             D_optimizer.zero_grad()
             true_inputs = Variable(b_img).cuda()
@@ -171,8 +162,8 @@ if __name__ == '__main__':
             real_loss.backward()
 
             # Train D with fake data
-            D_sample = Variable(torch.rand(batch_size, 1024, 1, 1)).cuda()
-            fake_inputs = G(D_sample).detach()
+            D_sample = Variable(torch.randn(batch_size,G_in, 1, 1)).cuda()
+            fake_inputs = G(D_sample)
             fake_labels = Variable(torch.from_numpy(0.3*np.random.rand(batch_size,1).astype('float32'))).cuda()
             D_fake_labels = D(fake_inputs)
             fake_loss = criterion(D_fake_labels, fake_labels)
@@ -184,27 +175,16 @@ if __name__ == '__main__':
             D_optimizer.step()
             R_loss += real_loss.data[0]
             F_loss += fake_loss.data[0]
-            sys.stdout.write('\rEpoch: {} [{}/{}]\tLoss_D: {:.5f}(R:{:.5f} + F:{:.5f})\tLoss_G: {:.5f}\tTime:{:.1f}'.format(
-                epoch+1, (batch_idx+1) * len(b_img), len(true_dataloader.dataset),
-                real_loss.data[0]+fake_loss.data[0],
-                real_loss.data[0],
-                fake_loss.data[0],
-                0,
-                time.time()-start_time))
-            sys.stdout.flush()
 
-        #######################
-        #  Update G network   #
-        #######################
-        for d in D.parameters():
-            d.requires_grad = False
-        for batch_idx in range(2000):
+            #######################
+            #  Update G network   #
+            #######################
             # Train D with real data
             G_optimizer.zero_grad()
-            G_sample = Variable(torch.rand(batch_size, 1024, 1, 1)).cuda()
+            G_sample = Variable(torch.randn(batch_size, G_in, 1, 1)).cuda()
             G_fake_inputs = G(G_sample)
             #fool the Discriminator
-            G_fake_labels = Variable(torch.from_numpy(0.3*np.random.rand(batch_size,1).astype('float32')+0.7)).cuda()
+            G_fake_labels = Variable(torch.from_numpy(0.0*np.random.rand(batch_size,1).astype('float32')+1.0)).cuda()
             DG_fake_labels = D(G_fake_inputs)
             g_loss = criterion(DG_fake_labels, G_fake_labels)
             g_loss.backward()
