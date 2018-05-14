@@ -4,7 +4,7 @@
  # File Name : VAE_test.py
  # Purpose : Use the VAE pytorch model to produce face data
  # Creation Date : 2018年05月12日 (週六) 01時47分19秒
- # Last Modified : 2018年05月12日 (週六) 13時48分01秒
+ # Last Modified : 廿十八年五月十四日 (週一) 廿時六分廿二秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -119,6 +119,7 @@ class VAE(torch.nn.Module):
         
 
 if __name__ == '__main__':
+    np.random.seed(69)
     print('Reading the testing data of face...', )
     sys.stdout.flush()
     filepath = '../data/hw4_dataset/test/'
@@ -151,3 +152,19 @@ if __name__ == '__main__':
         result[64:128, (0+i*64):(64+64*i), :] = recon_test[i,:,:,:]
 
     scipy.misc.imsave('fig1_3.jpg',(result+1)/2)
+
+    random_sample = Variable(torch.from_numpy(np.random.randn(32,1024,1,1))).cuda().float()
+    random_mean   = Variable(torch.from_numpy(np.random.randn(32,1024,1,1))).cuda().float()*15
+    random_sigma  = Variable(torch.from_numpy(np.random.randn(32,1024,1,1))).cuda().float()*5
+    random_sample = random_mean + random_sigma * random_sample
+    random_img = vae.decoder(random_sample)
+    random_img = random_img.data.cpu().numpy()
+    random_img = random_img.transpose((0, 2, 3, 1))
+    result = np.zeros((256,512,3)) 
+    for i in range(32):
+        h = int(i / 8)
+        w = i % 8
+        result[(0+h*64):(64+64*h), (0+w*64):(64+64*w), :] = random_img[i,:,:,:]
+
+    scipy.misc.imsave('fig1_4.jpg',(result+1)/2)
+
