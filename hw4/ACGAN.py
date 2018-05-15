@@ -4,7 +4,7 @@
  # File Name : ACGAN.py
  # Purpose : Training a Auxiliary Classifier GAN model
  # Creation Date : 2018年05月03日 (週四) 13時36分13秒
- # Last Modified : 廿十八年五月十五日 (週二) 十六時32分廿一秒
+ # Last Modified : 廿十八年五月十五日 (週二) 十七時廿三分59秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -152,7 +152,8 @@ if __name__ == '__main__':
     G_optimizer = optim.Adam(G.parameters(), lr=1e-4, betas=(0.5,0.999))
     D_optimizer = optim.Adam(D.parameters(), lr=1e-4, betas=(0.5,0.999))
 
-    criterion = nn.BCELoss().cuda()
+    dis_criterion = nn.BCELoss().cuda()
+    aux_criterion = nn.NLLLoss().cuda()
 
     #training with 40000 face images
     G.train()
@@ -184,8 +185,8 @@ if __name__ == '__main__':
             fake_labels = Variable(torch.from_numpy(0.3*np.random.rand(batch_size,1).astype('float32'))).cuda()
             D_fake_labels, D_fake_classes = D(fake_inputs)
 
-            real_loss = criterion(D_real_labels, true_labels)
-            fake_loss = criterion(D_fake_labels, fake_labels)
+            real_loss = dis_criterion(D_real_labels, true_labels)
+            fake_loss = dis_criterion(D_fake_labels, fake_labels)
             (real_loss + fake_loss).backward()
             if boardX:
                 writer.add_scalars('Loss of Discriminator', {'Real': real_loss.data[0], 'Fake':fake_loss.data[0]},
@@ -205,7 +206,7 @@ if __name__ == '__main__':
             #fool the Discriminator
             G_fake_labels = Variable(torch.from_numpy(0.0*np.random.rand(batch_size,1).astype('float32')+1.0)).cuda()
             DG_fake_labels = D(G_fake_inputs)
-            g_loss = criterion(DG_fake_labels, G_fake_labels)
+            g_loss = dis_criterion(DG_fake_labels, G_fake_labels)
             g_loss.backward()
             G_optimizer.step()
             if boardX:
