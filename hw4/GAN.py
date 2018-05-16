@@ -4,7 +4,7 @@
  # File Name : GAN.py
  # Purpose : Training a GAN model
  # Creation Date : 2018年05月03日 (週四) 13時36分05秒
- # Last Modified : 2018年05月14日 (週一) 17時23分20秒
+ # Last Modified : 廿十八年五月十七日 (週四) 一時48分52秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -86,8 +86,8 @@ def normal_init(m, mean, std):
 if __name__ == '__main__':
     batch_size = 20
     epochs = 25
-    test = True
-    boardX = True
+    test = False
+    boardX = False
     if boardX:
         from tensorboardX import SummaryWriter
         writer = SummaryWriter('runs/'+sys.argv[1])
