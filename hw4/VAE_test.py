@@ -4,7 +4,7 @@
  # File Name : VAE_test.py
  # Purpose : Use the VAE pytorch model to produce face data
  # Creation Date : 2018年05月12日 (週六) 01時47分19秒
- # Last Modified : 廿十八年五月十四日 (週一) 廿時六分廿二秒
+ # Last Modified : 廿十八年五月十六日 (週三) 廿三時32分56秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -17,106 +17,8 @@ import scipy.misc
 
 #import torch related module
 import torch
-from torch import nn
-import torch.nn.functional as F
 from torch.autograd import Variable
-import torch.optim as optim
-import torch.utils.data as Data
-import torchvision
-from torchvision import transforms
-
-boardX = True
-if boardX:
-    from tensorboardX import SummaryWriter
-
-class Encoder(nn.Module): 
-    def __init__(self, D_in):
-        super(Encoder, self).__init__()
-        #for 64x64 images
-        ndf = 64
-        self.conv1 = nn.Conv2d(D_in, ndf, (3,3), stride=2, padding=1)
-        self.bn1 = nn.BatchNorm2d(ndf)
-        self.conv2 = nn.Conv2d( ndf   ,  ndf*2, (3,3), stride=2, padding=1)
-        self.bn2 = nn.BatchNorm2d(ndf*2)
-        self.conv3 = nn.Conv2d( ndf*2 ,  ndf*4, (3,3), stride=2, padding=1)
-        self.bn3 = nn.BatchNorm2d(ndf*4)
-        self.conv4 = nn.Conv2d( ndf*4 ,  ndf*8, (3,3), stride=2, padding=1)
-        self.bn4 = nn.BatchNorm2d(ndf*8)
-        self.conv5 = nn.Conv2d( ndf*8 , ndf*16, (3,3), stride=2, padding=1)
-        self.bn5 = nn.BatchNorm2d(ndf*16)
-        self.conv6 = nn.Conv2d( ndf*16 ,ndf*16, (3,3), stride=2, padding=1)
-        self.bn6 = nn.BatchNorm2d(ndf*16)
-        #1024 dims
-        self.convm = nn.Conv2d( ndf*16, ndf*16, (1,1))
-        self.bnm = nn.BatchNorm2d(ndf*16)
-        self.convv = nn.Conv2d( ndf*16, ndf*16, (1,1))
-        self.bnv = nn.BatchNorm2d(ndf*16)
-
-    def forward(self, x):
-        x = F.leaky_relu(self.bn1(self.conv1(x))) 
-        x = F.leaky_relu(self.bn2(self.conv2(x))) 
-        x = F.leaky_relu(self.bn3(self.conv3(x))) 
-        x = F.leaky_relu(self.bn4(self.conv4(x))) 
-        x = F.leaky_relu(self.bn5(self.conv5(x))) 
-        x = F.leaky_relu(self.bn6(self.conv6(x))) 
-
-        mean = F.leaky_relu(self.bnm(self.convm(x)))
-        log_sigma = F.leaky_relu(self.bnv(self.convv(x)))
-        return mean, log_sigma
-   
-class Decoder(nn.Module):
-    def __init__(self, D_in):
-        super(Decoder, self).__init__()
-        ndf = 64
-        #decode 1024 dims vector
-        self.convtrans1 = nn.ConvTranspose2d(   D_in, ndf*16, (1,1))
-        self.bn1 = nn.BatchNorm2d(ndf*16)
-        self.convtrans2 = nn.ConvTranspose2d( ndf*16, ndf*16, (2,2))
-        self.bn2 = nn.BatchNorm2d(ndf*16)
-        self.convtrans3 = nn.ConvTranspose2d( ndf*16, ndf*8 , (3,3))
-        self.bn3 = nn.BatchNorm2d(ndf*8)
-        self.convtrans4 = nn.ConvTranspose2d( ndf*8 , ndf*4 , (4,4), stride=2, padding=1)
-        self.bn4 = nn.BatchNorm2d(ndf*4)
-        self.convtrans5 = nn.ConvTranspose2d( ndf*4 , ndf*2 , (4,4), stride=2, padding=1)
-        self.bn5 = nn.BatchNorm2d(ndf*2)
-        self.convtrans6 = nn.ConvTranspose2d( ndf*2 , ndf   , (4,4), stride=2, padding=1)
-        self.bn6 = nn.BatchNorm2d(ndf)
-
-        self.convtrans7 = nn.ConvTranspose2d( ndf   ,      3, (4,4), stride=2, padding=1)
-        self.bn7 = nn.BatchNorm2d(3)
-
-    def forward(self, x):
-        x = F.leaky_relu(self.bn1(self.convtrans1(x))) 
-        x = F.leaky_relu(self.bn2(self.convtrans2(x))) 
-        x = F.leaky_relu(self.bn3(self.convtrans3(x))) 
-        x = F.leaky_relu(self.bn4(self.convtrans4(x))) 
-        x = F.leaky_relu(self.bn5(self.convtrans5(x))) 
-        x = F.leaky_relu(self.bn6(self.convtrans6(x))) 
-        return F.tanh(self.bn7(self.convtrans7(x))) 
-
-class VAE(torch.nn.Module):
-    def __init__(self, encoder, decoder):
-        super(VAE, self).__init__()
-        self.encoder = encoder
-        self.decoder = decoder
-    def _sample_latent(self, h_enc):
-        """
-        Return the latent normal sample z ~ N(mu, sigma^2)
-        """
-        mu = h_enc[0]
-        log_sigma = h_enc[1]
-        sigma = torch.exp(log_sigma)
-        std_z = torch.from_numpy(np.random.normal(0, 1, size=sigma.size())).float()
-
-        self.z_mean = mu
-        self.z_sigma = sigma
-        return mu + sigma * Variable(std_z, requires_grad=False).cuda() 
-
-    def forward(self, state):
-        h_enc = self.encoder(state)
-        z = self._sample_latent(h_enc)
-        return self.decoder(z) 
-        
+from VAE import *
 
 if __name__ == '__main__':
     np.random.seed(69)
