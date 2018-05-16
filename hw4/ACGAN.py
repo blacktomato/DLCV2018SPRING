@@ -4,7 +4,7 @@
  # File Name : ACGAN.py
  # Purpose : Training a Auxiliary Classifier GAN model
  # Creation Date : 2018年05月03日 (週四) 13時36分13秒
- # Last Modified : 廿十八年五月十五日 (週二) 十七時廿三分59秒
+ # Last Modified : 廿十八年五月十六日 (週三) 十時十一分八秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -90,7 +90,7 @@ def normal_init(m, mean, std):
 
 if __name__ == '__main__':
     batch_size = 20
-    epochs = 50
+    epochs = 20
     test = True
     boardX = True
     if boardX:
@@ -117,7 +117,7 @@ if __name__ == '__main__':
     rf_label = 0.3*np.random.rand(n_faces,1).astype('float32')+0.7
     filepath = '../data/hw4_dataset/train.csv'
     cl_label = pd.read_csv(filepath)['Smiling'].as_matrix().astype('float32').reshape(n_face, 1)
-    true_label_ts = torch.from_numpy(np.hstack(rf_label, cl_label))
+    true_label_ts = torch.from_numpy(np.hstack(rf_label, cl_label, 1-cl_label))
     true_set = Data.TensorDataset(data_tensor=true_ts, target_tensor=true_label_ts)
 
     true_dataloader = Data.DataLoader(dataset=true_set, 
@@ -158,12 +158,12 @@ if __name__ == '__main__':
     #training with 40000 face images
     G.train()
     D.train()
-    test_sample = Variable(torch.randn(32, G_in, 1, 1)).cuda()
+    test_z_sample = Variable(torch.randn(20, 100, 1, 1)).cuda()
+    c = np.random.randint(0, n_classes, (batch_size, 1)) 
+    c = np.hstack((c, 1-c)).reshape(batch_size, 2, 1, 1)
+    test_c_sample = Variable(torch.from_numpy(c).float).cuda()
     for epoch in range(epochs):
         start_time=time.time()
-        G_loss = 0
-        R_loss = 0
-        F_loss = 0
         for batch_idx, (b_img, b_tar) in enumerate(true_dataloader):
             #######################
             #  Update D network   #
@@ -172,42 +172,56 @@ if __name__ == '__main__':
             D_optimizer.zero_grad()
             true_inputs = Variable(b_img).cuda()
             true_labels = Variable(b_tar[:,0]).cuda()
-            true_classes = Variable(b_tar[:,1]).cuda()
+            true_classes = Variable(b_tar[:,1:3]).cuda()
             D_real_labels, D_real_classes = D(true_inputs)
 
             # Train D with fake data
             z = np.random.randn(batch_size,G_in-2, 1, 1)
             c = np.random.randint(0, n_classes, (batch_size, 1)) 
-            c = np.concatnate((c, 1-c), 1).reshape(batch_size, 2, 1, 1)
+            c = np.hstack((c, 1-c)).reshape(batch_size, 2, 1, 1)
             D_z_sample = Variable(torch.from_numpy(z).float).cuda()
             D_c_sample = Variable(torch.from_numpy(c).float).cuda()
             fake_inputs = G(D_z_sample, D_c_sample)
             fake_labels = Variable(torch.from_numpy(0.3*np.random.rand(batch_size,1).astype('float32'))).cuda()
+            fake_classes = Variable(b_tar[:,1]).cuda()
             D_fake_labels, D_fake_classes = D(fake_inputs)
 
             real_loss = dis_criterion(D_real_labels, true_labels)
             fake_loss = dis_criterion(D_fake_labels, fake_labels)
+            rclas_loss = aux_criterion(D_real_classes,true_classes)
+            fclas_loss = aux_criterion(D_fake_classes,fake_classes)
             (real_loss + fake_loss).backward()
+            (rclas_loss + fclas_loss).backward()
             if boardX:
                 writer.add_scalars('Loss of Discriminator', {'Real': real_loss.data[0], 'Fake':fake_loss.data[0]},
+                                    epoch*len(true_dataloader.dataset)/batch_size+batch_idx)
+                writer.add_scalars('Loss of Classifier', {'Real': rclas_loss.data[0], 'Fake':fclas_loss.data[0]},
                                     epoch*len(true_dataloader.dataset)/batch_size+batch_idx)
 
             D_optimizer.step()
             R_loss += real_loss.data[0]
             F_loss += fake_loss.data[0]
+            ACR_loss += rclas_loss.data[0]
+            ACF_loss += fclas_loss.data[0]
 
             #######################
             #  Update G network   #
             #######################
             # Train D with real data
             G_optimizer.zero_grad()
-            G_sample = Variable(torch.randn(batch_size, G_in, 1, 1)).cuda()
-            G_fake_inputs = G(G_sample)
+            z = np.random.randn(batch_size,G_in-2, 1, 1)
+            c = np.random.randint(0, n_classes, (batch_size, 1)) 
+            c = np.hstack((c, 1-c)).reshape(batch_size, 2, 1, 1)
+            G_z_sample = Variable(torch.from_numpy(z).float).cuda()
+            G_c_sample = Variable(torch.from_numpy(c).float).cuda()
+            G_fake_inputs = G(G_z_sample, G_c_sample)
             #fool the Discriminator
             G_fake_labels = Variable(torch.from_numpy(0.0*np.random.rand(batch_size,1).astype('float32')+1.0)).cuda()
-            DG_fake_labels = D(G_fake_inputs)
-            g_loss = dis_criterion(DG_fake_labels, G_fake_labels)
+            DG_fake_labels, DG_fake_classes = D(G_fake_inputs)
+            g_loss     = dis_criterion(DG_fake_labels, G_fake_labels)
+            gclas_loss = aux_criterion(DG_fake_classes, G_fake_labels)
             g_loss.backward()
+            gclas_loss.backward()
             G_optimizer.step()
             if boardX:
                 writer.add_scalar('Loss of Generator', g_loss.data[0],
@@ -215,31 +229,35 @@ if __name__ == '__main__':
 
 
             G_loss += g_loss.data[0]
-            sys.stdout.write('\rEpoch: {} [{}/{}]\tLoss_D: {:.5f}(R:{:.5f} + F:{:.5f})\tLoss_G: {:.5f}\tTime:{:.1f}'.format(
-                epoch+1, (batch_idx+1) * len(b_img), len(true_dataloader.dataset),
-                real_loss.data[0]+fake_loss.data[0],
+            status = '\rEpoch: {} [{}/{}] '
+            D_status = 'Aux_Loss_D: {:.3f} (R:{:.3f} + F:{:.3f}) '
+            D_status = 'Dis_Loss_D: {:.3f} (R:{:.3f} + F:{:.3f}) ' + D_status
+            G_status = 'Dis_Loss_G: {:.3f} Aux_Loss_G: {:.3f} '
+            sys.stdout.write((status+D_status+G_status+'Times:{.1f}').format(
+                epoch+1, (batch_idx+1) * len(b_img), len(true_dataloader.dataset),  #status
+                real_loss.data[0]+fake_loss.data[0],                                #D_status
                 real_loss.data[0],
                 fake_loss.data[0],
+                rclas_loss.data[0]+fclas_loss.data[0],
+                rclas_loss.data[0],
+                fclas_loss.data[0],
                 g_loss.data[0],
+                gclas_loss.data[0],
                 time.time()-start_time))
             sys.stdout.flush()
 
-        print('===> <Average> D_loss(R/F): {:.4f}/{:.4f} G_loss: {:.4f}'.format(R_loss/len(true_dataloader.dataset),
-                                                                                F_loss/len(true_dataloader.dataset),
-                                                                                G_loss/len(true_dataloader.dataset)))
-            
         if test:
             #generate some images
             G.eval()
-            gen_images = G(test_sample)
+            gen_images = G(test_z_sample, test_c_sample)
             gen_images = gen_images.data.cpu().numpy()
             gen_images = gen_images.transpose((0, 2, 3, 1))
-            result = np.zeros((256,512,3)) 
-            for i in range(32):
-                h = int(i / 8)
-                w = i % 8
+            result = np.zeros((128,640,3)) 
+            for i in range(20):
+                h = int(i / 10)
+                w = i % 10
                 result[(0+h*64):(64+64*h), (0+w*64):(64+64*w), :] = gen_images[i,:,:,:]
             writer.add_image('acgan_faces', (result+1)/2, epoch+1)
 
-    torch.save(G, 'ACGAN_G_e50_.pt')
-    torch.save(D, 'ACGAN_D_e50_.pt')
+    torch.save(G, 'ACGAN_G_e20_.pt')
+    torch.save(D, 'ACGAN_D_e20_.pt')
