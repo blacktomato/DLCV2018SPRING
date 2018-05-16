@@ -4,7 +4,7 @@
  # File Name : ACGAN.py
  # Purpose : Training a Auxiliary Classifier GAN model
  # Creation Date : 2018年05月03日 (週四) 13時36分13秒
- # Last Modified : 廿十八年五月十六日 (週三) 十六時43分〇秒
+ # Last Modified : 廿十八年五月十六日 (週三) 十八時52分四秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -90,7 +90,8 @@ def normal_init(m, mean, std):
 
 #return the Tensor of Sample for Generator
 def random_sample_z_c(batch_size, z_dim, n_classes):
-    z_sample = Variable(torch.randn(batch_size, z_dim, 1, 1)).cuda()
+    z = np.random.randn(batch_size, z_dim, 1, 1)
+    z_sample = Variable(torch.from_numpy(z).float()).cuda()
     c = np.random.randint(0, n_classes, (batch_size, 1)) 
     c = np.eye(n_classes)[c].reshape(batch_size, n_classes, 1, 1)
     c_sample = Variable(torch.from_numpy(c).float()).cuda()
