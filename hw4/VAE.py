@@ -4,7 +4,7 @@
  # File Name : VAE.py
  # Purpose : Training a Variational AutoEncoder model
  # Creation Date : 2018年05月03日 (週四) 13時34分13秒
- # Last Modified : 廿十八年五月十二日 (週六) 十六時47分十八秒
+ # Last Modified : 廿十八年五月十七日 (週四) 〇時七分七秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -120,7 +120,7 @@ def latent_loss(z_mean, z_stddev):
 if __name__ == '__main__':
     batch_size = 20
     epochs = 100
-    test = True
+    test = False
     boardX = False
     if boardX:
         from tensorboardX import SummaryWriter
@@ -215,7 +215,7 @@ if __name__ == '__main__':
                 result[0:64, (0+i*64):(64+64*i), :] = test_np[i,:,:,:]
                 result[64:128, (0+i*64):(64+64*i), :] = recon_test[i,:,:,:]
             if boardX:
-                writer.add_image('test_imresult'+str(epoch+1), (result+1)/2, epoch+1)
+                writer.add_image('VAE_test_imresult', (result+1)/2, epoch+1)
 
             if (epoch+1) %  5 == 0 or (epoch == 0):
                 mpimg.imsave('e'+str(epoch+1)+'_lKL'+sys.argv[1]+'.png', (result+1)/2)
