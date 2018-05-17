@@ -4,16 +4,20 @@
  # File Name : VAE_test.py
  # Purpose : Use the VAE pytorch model to produce face data
  # Creation Date : 2018年05月12日 (週六) 01時47分19秒
- # Last Modified : 廿十八年五月十六日 (週三) 廿三時32分56秒
+ # Last Modified : 廿十八年五月十八日 (週五) 〇時二分33秒
  # Created By : SL Chung
 ##############################################################
 import sys
 import os
 import numpy as np
 import time
+import matplotlib
+matplotlib.use('pdf')
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import scipy.misc
+import pandas as pd
+from sklearn.manifold import TSNE
 
 #import torch related module
 import torch
@@ -27,15 +31,14 @@ if __name__ == '__main__':
     filepath = '../data/hw4_dataset/test/'
     face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
     face_list.sort()
-    n_faces = 10
+    n_faces = len(face_list)
     h, w, d = 64, 64, 3
     test_np = np.empty((n_faces, h, w, d), dtype='float32')
 
-    for i, file in enumerate(face_list[0:10]):
+    for i, file in enumerate(face_list):
         test_np[i] = mpimg.imread(os.path.join(filepath, file))*2-1
     print("Done!")
     test_ts = torch.from_numpy(test_np.transpose((0, 3, 1, 2))).cuda()
-
 
     vae = torch.load(sys.argv[1])
     vae.cuda()
@@ -43,7 +46,7 @@ if __name__ == '__main__':
     #training with 40000 face images
             
     #reconstruct some images
-    inputs = Variable(test_ts).cuda()
+    inputs = Variable(test_ts[0:10]).cuda()
     vae.eval()
     recon_test = vae(inputs)
     recon_test = recon_test.data.cpu().numpy()
@@ -69,4 +72,33 @@ if __name__ == '__main__':
         result[(0+h*64):(64+64*h), (0+w*64):(64+64*w), :] = random_img[i,:,:,:]
 
     scipy.misc.imsave('fig1_4.jpg',(result+1)/2)
+
+    #loading the attribute of the test image
+    filepath = os.path.join(sys.argv[2], 'test.csv')
+    cl_label = pd.read_csv(filepath)['Smiling'].as_matrix().reshape(n_faces, 1)
+    n_latent = 500
+    selection = np.random.choice(2621, n_latent)
+    test_ts = torch.from_numpy(test_np.transpose((0, 3, 1, 2))[selection]).cuda()
+    test_tsne = Variable(test_ts).cuda()
+
+    latent = torch.Tensor().cuda()
+    for i in range(int(n_latent/10)):
+        latent = torch.cat([latent, vae.encoder(test_tsne[0+i*10:10+i*10])[0].data])
+    
+    print('Performing t-SNE...', )
+    sys.stdout.flush()
+    latent_embedded = TSNE(n_components=2).fit_transform(latent.cpu().numpy().reshape(n_latent,-1))
+    latent_label = cl_label[selection]
+    print('Done')
+    
+    #smiling data
+    fig = plt.figure()
+    plt.title("tSNE_latent")
+    s = np.argwhere(latent_label==1)
+    plt.scatter(latent_embedded[s,0], latent_embedded[s,1], c=[1., 0, 0] )
+    ns = np.argwhere(latent_label==0)
+    plt.scatter(latent_embedded[ns,0], latent_embedded[ns,1], c=[0, 1, 0] )
+    print('Output: t-SNE fig...', )
+    sys.stdout.flush()
+    plt.savefig("fig1_5.jpg")
 
