@@ -4,7 +4,7 @@
  # File Name : VAE.py
  # Purpose : Training a Variational AutoEncoder model
  # Creation Date : 2018年05月03日 (週四) 13時34分13秒
- # Last Modified : 廿十八年五月十七日 (週四) 〇時七分七秒
+ # Last Modified : 廿十八年五月十八日 (週五) 十六時卅分40秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -129,7 +129,7 @@ if __name__ == '__main__':
     print('Reading the training data of face...',end='')
     sys.stdout.flush()
 
-    filepath = '../data/hw4_dataset/train/'
+    filepath = '../data/hw4_dataset/test/'
     face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
     face_list.sort()
     n_faces = len(face_list)
@@ -152,7 +152,7 @@ if __name__ == '__main__':
     if test:
         print('Reading the testing data of face...', end='')
         sys.stdout.flush()
-        filepath = '../data/hw4_dataset/test/'
+        filepath = '../data/hw4_dataset/train/'
         face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
         face_list.sort()
         n_faces = 10

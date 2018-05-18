@@ -4,7 +4,7 @@
  # File Name : VAE_test.py
  # Purpose : Use the VAE pytorch model to produce face data
  # Creation Date : 2018年05月12日 (週六) 01時47分19秒
- # Last Modified : 廿十八年五月十八日 (週五) 〇時二分33秒
+ # Last Modified : 廿十八年五月十八日 (週五) 十四時五分八秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -26,7 +26,7 @@ from VAE import *
 
 if __name__ == '__main__':
     np.random.seed(69)
-    print('Reading the testing data of face...', )
+    print('Reading the testing data of face...', end='' )
     sys.stdout.flush()
     filepath = '../data/hw4_dataset/test/'
     face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
@@ -43,8 +43,6 @@ if __name__ == '__main__':
     vae = torch.load(sys.argv[1])
     vae.cuda()
 
-    #training with 40000 face images
-            
     #reconstruct some images
     inputs = Variable(test_ts[0:10]).cuda()
     vae.eval()
@@ -78,14 +76,14 @@ if __name__ == '__main__':
     cl_label = pd.read_csv(filepath)['Smiling'].as_matrix().reshape(n_faces, 1)
     n_latent = 500
     selection = np.random.choice(2621, n_latent)
-    test_ts = torch.from_numpy(test_np.transpose((0, 3, 1, 2))[selection]).cuda()
-    test_tsne = Variable(test_ts).cuda()
+    test_tsne = torch.from_numpy(test_np.transpose((0, 3, 1, 2))[selection]).cuda()
+    test_tsne = Variable(test_tsne).cuda()
 
     latent = torch.Tensor().cuda()
     for i in range(int(n_latent/10)):
         latent = torch.cat([latent, vae.encoder(test_tsne[0+i*10:10+i*10])[0].data])
     
-    print('Performing t-SNE...', )
+    print('Performing t-SNE...', end=''  )
     sys.stdout.flush()
     latent_embedded = TSNE(n_components=2).fit_transform(latent.cpu().numpy().reshape(n_latent,-1))
     latent_label = cl_label[selection]
@@ -98,7 +96,23 @@ if __name__ == '__main__':
     plt.scatter(latent_embedded[s,0], latent_embedded[s,1], c=[1., 0, 0] )
     ns = np.argwhere(latent_label==0)
     plt.scatter(latent_embedded[ns,0], latent_embedded[ns,1], c=[0, 1, 0] )
-    print('Output: t-SNE fig...', )
+    print('Output: t-SNE fig'  )
     sys.stdout.flush()
     plt.savefig("fig1_5.jpg")
 
+    test_set = Data.TensorDataset(data_tensor=test_ts, target_tensor=test_ts)
+
+    batch_size = 20
+    dataloader = Data.DataLoader(dataset=test_set, 
+                                    batch_size=batch_size, 
+                                    shuffle=True)
+    
+    criterion = nn.MSELoss(size_average=False)
+    MSE_loss = 0
+    for batch_idx, (b_img, b_tar) in enumerate(dataloader):
+        inputs = Variable(b_img).cuda()
+        dec = vae(inputs)    
+        MSE = criterion(dec, inputs) 
+        MSE_loss += MSE.data[0]
+
+    print('===> Average loss: {:.4f}'.format(MSE_loss/len(dataloader.dataset)))
