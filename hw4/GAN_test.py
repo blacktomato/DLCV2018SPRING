@@ -4,7 +4,7 @@
  # File Name : GAN_test.py
  # Purpose : Load GAN_model and Produce the Random Faces
  # Creation Date : 2018年05月15日 (週二) 00時27分52秒
- # Last Modified : 廿十八年五月十六日 (週三) 廿時55分十六秒
+ # Last Modified : 廿十八年五月十八日 (週五) 廿二時卅一分39秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -39,6 +39,7 @@ if __name__ == '__main__':
         h = int(i / 8)
         w = i % 8
         result[(0+h*64):(64+64*h), (0+w*64):(64+64*w), :] = gen_images[i,:,:,:]
-    scipy.misc.imsave('fig2_3.jpg',(result+1)/2)
+    output_path = os.path.join(sys.argv[2], 'fig2_3.jpg')
+    scipy.misc.imsave(output_path,(result+1)/2)
 
 

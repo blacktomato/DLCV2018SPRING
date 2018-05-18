@@ -4,7 +4,7 @@
  # File Name : ACGAN_test.py
  # Purpose :
  # Creation Date : 廿十八年五月十六日 (週三) 十七時廿一分36秒
- # Last Modified : 廿十八年五月十六日 (週三) 十八時48分48秒
+ # Last Modified : 廿十八年五月十八日 (週五) 廿二時32分57秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -46,5 +46,6 @@ if __name__ == '__main__':
         h = int(i / n_test_imgs)
         w = i % n_test_imgs
         result[(0+h*64):(64+64*h), (0+w*64):(64+64*w), :] = gen_images[i,:,:,:]
-    scipy.misc.imsave('fig3_3.jpg',(result+1)/2)
+    output_path = os.path.join(sys.argv[2], 'fig3_3.jpg')
+    scipy.misc.imsave(output_path,(result+1)/2)
 

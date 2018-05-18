@@ -4,7 +4,7 @@
  # File Name : VAE_test.py
  # Purpose : Use the VAE pytorch model to produce face data
  # Creation Date : 2018年05月12日 (週六) 01時47分19秒
- # Last Modified : 廿十八年五月十八日 (週五) 十四時五分八秒
+ # Last Modified : 廿十八年五月十八日 (週五) 廿二時卅分34秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     np.random.seed(69)
     print('Reading the testing data of face...', end='' )
     sys.stdout.flush()
-    filepath = '../data/hw4_dataset/test/'
+    filepath = os.path.join(sys.argv[2], '/test/')
     face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
     face_list.sort()
     n_faces = len(face_list)
@@ -69,13 +69,14 @@ if __name__ == '__main__':
         w = i % 8
         result[(0+h*64):(64+64*h), (0+w*64):(64+64*w), :] = random_img[i,:,:,:]
 
-    scipy.misc.imsave('fig1_4.jpg',(result+1)/2)
+    output_path = os.path.join(sys.argv[3], 'fig1_4.jpg')
+    scipy.misc.imsave(output_path, result+1)/2)
 
     #loading the attribute of the test image
     filepath = os.path.join(sys.argv[2], 'test.csv')
     cl_label = pd.read_csv(filepath)['Smiling'].as_matrix().reshape(n_faces, 1)
     n_latent = 500
-    selection = np.random.choice(2621, n_latent)
+    selection = np.random.choice(n_faces, n_latent)
     test_tsne = torch.from_numpy(test_np.transpose((0, 3, 1, 2))[selection]).cuda()
     test_tsne = Variable(test_tsne).cuda()
 
@@ -98,7 +99,8 @@ if __name__ == '__main__':
     plt.scatter(latent_embedded[ns,0], latent_embedded[ns,1], c=[0, 1, 0] )
     print('Output: t-SNE fig'  )
     sys.stdout.flush()
-    plt.savefig("fig1_5.jpg")
+    output_path = os.path.join(sys.argv[3], 'fig1_5.jpg')
+    plt.savefig(output_path)
 
     test_set = Data.TensorDataset(data_tensor=test_ts, target_tensor=test_ts)
 
