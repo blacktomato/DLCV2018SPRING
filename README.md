@@ -4,5 +4,5 @@
 * Hw1: Implement the EigenFace with PCA and Classify the Faces with KNN. 
 * Hw2: Color/Texture Segment and Bag-of-visual-words for Classification.
 * Hw3: Fully Convolutional Network for Semantic Segmentation
-* Hw4:
+* Hw4: Variational Autoencoder & Generative Adversarial Network (DCGAN & ACGAN)
 * Hw5:
