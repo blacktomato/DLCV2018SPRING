@@ -4,7 +4,7 @@
  # File Name : VAE_test.py
  # Purpose : Use the VAE pytorch model to produce face data
  # Creation Date : 2018年05月12日 (週六) 01時47分19秒
- # Last Modified : 廿十八年五月十八日 (週五) 廿二時46分八秒
+ # Last Modified : 廿十八年五月十八日 (週五) 廿二時53分十九秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     np.random.seed(69)
     print('Reading the testing data of face...', end='' )
     sys.stdout.flush()
-    filepath = os.path.join(sys.argv[2], '/test/')
+    filepath = os.path.join(sys.argv[2], 'test/')
     face_list = [file for file in os.listdir(filepath) if file.endswith('.png')]
     face_list.sort()
     n_faces = len(face_list)
