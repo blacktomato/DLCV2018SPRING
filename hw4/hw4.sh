@@ -10,6 +10,7 @@ wget -O 'log.zip' 'https://www.dropbox.com/sh/m1dbkjnl2uim85v/AADkH4PKwLuksC-m-E
 unzip log.zip
 cd ..
 python3 VAE_test.py VAE_e100_lKL1e-5.pt $1 $2
-python3 GAN_test.py GAN_G_e25.pt
-python3 ACGAN_test.py ACGAN_G_e20.pt
-python3 read_tb_event.py ./log
+python3 GAN_test.py GAN_G_e25.pt $2
+python3 ACGAN_test.py ACGAN_G_e20.pt $2
+python3 read_tb_event.py ./log $2
+
