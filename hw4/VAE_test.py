@@ -4,7 +4,7 @@
  # File Name : VAE_test.py
  # Purpose : Use the VAE pytorch model to produce face data
  # Creation Date : 2018年05月12日 (週六) 01時47分19秒
- # Last Modified : 廿十八年五月十八日 (週五) 廿二時卅分34秒
+ # Last Modified : 廿十八年五月十八日 (週五) 廿二時46分八秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -70,7 +70,7 @@ if __name__ == '__main__':
         result[(0+h*64):(64+64*h), (0+w*64):(64+64*w), :] = random_img[i,:,:,:]
 
     output_path = os.path.join(sys.argv[3], 'fig1_4.jpg')
-    scipy.misc.imsave(output_path, result+1)/2)
+    scipy.misc.imsave(output_path, (result+1)/2)
 
     #loading the attribute of the test image
     filepath = os.path.join(sys.argv[2], 'test.csv')
