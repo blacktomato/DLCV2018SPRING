@@ -4,7 +4,7 @@
  # File Name : ResNet.py
  # Purpose : Classification with ResNet feature
  # Creation Date : 廿十八年五月廿四日 (週四) 十五時廿一分九秒
- # Last Modified : 2018年05月30日 (週三) 14時12分20秒
+ # Last Modified : 2018年05月30日 (週三) 15時58分41秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -165,3 +165,5 @@ if __name__=='__main__':
                 
         sys.stdout.write('Times:{:.1f}\n'.format(time.time() - start_time))
     print('Total training:{:.1f}'.format(time.time() - training_time))
+    print('Saving model...')
+    torch.save(Net, 'FC_for_C.pt')
