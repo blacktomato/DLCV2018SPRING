@@ -4,13 +4,12 @@
  # File Name : ResNet_test.py
  # Purpose : Test the Feature and FC for classification
  # Creation Date : 2018年05月30日 (週三) 15時55分47秒
- # Last Modified : 2018年05月30日 (週三) 17時02分30秒
+ # Last Modified : 2018年05月30日 (週三) 18時12分16秒
  # Created By : SL Chung
 ##############################################################
 import sys
 import os
 import numpy as np
-import pandas as pd
 import time
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg

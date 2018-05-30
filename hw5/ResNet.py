@@ -4,13 +4,12 @@
  # File Name : ResNet.py
  # Purpose : Classification with ResNet feature
  # Creation Date : 廿十八年五月廿四日 (週四) 十五時廿一分九秒
- # Last Modified : 2018年05月30日 (週三) 15時58分41秒
+ # Last Modified : 2018年05月30日 (週三) 18時12分56秒
  # Created By : SL Chung
 ##############################################################
 import sys
 import os
 import numpy as np
-import pandas as pd
 import time
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
