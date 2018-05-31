@@ -4,7 +4,7 @@
  # File Name : ResNet.py
  # Purpose : Classification with ResNet feature
  # Creation Date : 廿十八年五月廿四日 (週四) 十五時廿一分九秒
- # Last Modified : 2018年05月30日 (週三) 18時12分56秒
+ # Last Modified : 2018年05月31日 (週四) 19時20分06秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -53,7 +53,7 @@ class FC_for_C(nn.Module):
         x = F.leaky_relu(self.bn1(self.fc1(features)))
         x = F.leaky_relu(self.drop1(self.bn2(self.fc2(x))))
         x = F.leaky_relu(self.drop2(self.bn3(self.fc3(x))))
-        return F.softmax(self.fc4(x))
+        return F.softmax(self.fc4(x), dim=-1)
 
 def normal_init(m, mean, std):
     if isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Conv2d):
