@@ -4,7 +4,7 @@
  # File Name : RNN.py
  # Purpose : Use RNN structure to classify the video 
  # Creation Date : 2018年05月30日 (週三) 15時44分46秒
- # Last Modified : Thu 31 May 2018 02:17:09 AM CST
+ # Last Modified : 2018年05月31日 (週四) 18時29分22秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -20,6 +20,7 @@ import scipy.misc
 import torch
 from torch import nn
 import torch.nn.functional as F
+import torch.nn.utils as nn_utils
 from torch.autograd import Variable
 import torch.optim as optim
 import torch.utils.data as Data
@@ -33,49 +34,75 @@ resnet50 = models.resnet50(pretrained = True)
 resnet50.cuda() 
 resnet50.eval()
 
-class FC_for_C(nn.Module):
+class RNN(nn.Module):
     def __init__(self, n_classes):
-        super(FC_for_C, self).__init__()
-        self.fc4 = nn.Linear(125, n_classes)
+        super(RNN, self).__init__()
+        self.rnn = nn.RNN(
+            input_size = 1000,
+            hidden_size = 500,
+            num_layers = 6,
+            batch_first = True
+        )
+
+        self.fc1 = nn.Linear(500, 250)
+        self.bn1 = nn.BatchNorm1d(250)
+        self.drop1 = nn.Dropout(0.2)
+        self.fc2 = nn.Linear(250, 125)
+        self.bn2 = nn.BatchNorm1d(125)
+        self.fc3 = nn.Linear(125, n_classes)
          
     def weight_init(self, mean, std):
         for m in self._modules:
             normal_init(self._modules[m], mean, std)
 
-    def forward(self, features):
-        x = F.leaky_relu(self.bn1(self.fc1(features)))
+    def forward(self, features, h_state):
+        x, h_state = self.rnn(features, h_state)
+        x = F.leaky_relu(self.bn1(x))
         x = F.leaky_relu(self.drop1(self.bn2(self.fc2(x))))
-        x = F.leaky_relu(self.drop2(self.bn3(self.fc3(x))))
-        return F.softmax(self.fc4(x))
+        return F.softmax(self.fc3(x)), h_state
 
 def normal_init(m, mean, std):
     if isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Conv2d):
         m.weight.data.normal_(mean, std)
         m.bias.data.zero_()
 
-def Video2Seq(video_path, video_category, video_name, longest_length):
+def Video2Seq(video_path, video_category, video_name):
     features = torch.Tensor()
+    seq_length = []
     for i in range(len(video_name)):
         frames = readShortVideo(video_path, video_category[i], video_name[i])
         ts_frames = torch.from_numpy(frames.transpose((0, 3, 1, 2))).float()/ 255.
         sys.stdout.write('\rReading the Video... : {:}'.format(i))
         sys.stdout.flush()
+
         set = Data.TensorDataset(ts_frames)
 
-        dataloader = Data.DataLoader(dataset=set) 
-        feature = torch.zeros(longest_length, 1000).cuda()
+        dataloader = Data.DataLoader(dataset=set, 
+                                    batch_size=3) 
+
+        seq_length.append(0)
         for batch_idx, b_frame in enumerate(dataloader):
-            feature[batch_idx] = resnet50(b_frame[0].cuda()).detach()
-        features = torch.cat([features, feature.cpu()])
+            features = torch.cat([features, resnet50(b_frame[0].cuda()).detach().cpu()])
+            seq_length[i] += 1
+
+    max_length = max(seq_length)
+    seq = torch.zeros(len(seq_length), max_length, features.shape[1])
+    start = 0
+    
+    for i in range(len(seq_length)):
+        seq[i,0:seq_length[i],:] = features[start:start+seq_length[i],:]
+        start += seq_length[i]
+
     sys.stdout.write('... Done\n')
     sys.stdout.flush()
-    return features
+    return seq, seq_length 
 
 if __name__=='__main__': 
     epochs = 2000
     n_classes = 11
     batch_size = 100
     boardX = False
+    presave_tensor = True 
 
     if boardX:
         from tensorboardX import SummaryWriter
@@ -87,8 +114,7 @@ if __name__=='__main__':
     train_tag = np.array(train_info['Action_labels']).astype('float') 
     train_tag = torch.from_numpy(train_tag)
     del train_info
-    train_ts = Video2Seq(train_path, train_category, train_name, train_longest)
-    torch.save(train_ts, '/data/r06942052/rnn_train_ts.pt')
+    
 
     valid_info = getVideoList('/data/r06942052/HW5_data/TrimmedVideos/label/gt_valid.csv')
     valid_path = '/data/r06942052/HW5_data/TrimmedVideos/video/valid'
@@ -97,19 +123,27 @@ if __name__=='__main__':
     valid_tag = np.array(valid_info['Action_labels']).astype('float') 
     valid_tag = torch.from_numpy(valid_tag)
     del valid_info
-    valid_ts = Video2Tensor(valid_path, valid_category, valid_name, valid_longest)
-    torch.save(valid_ts, '/data/r06942052/rnn_valid_ts.pt')
-    '''
-    train_ts = torch.load('/data/r06942052/train_ts.pt')
-    valid_ts = torch.load('/data/r06942052/valid_ts.pt')
-    '''
-    train_set = Data.TensorDataset(train_ts, train_tag.long())
-    valid_set = Data.TensorDataset(valid_ts, valid_tag.long())
+
+    if presave_tensor:
+        train_ts = torch.load('/data/r06942052/rnn_train_ts.pt')
+        valid_ts = torch.load('/data/r06942052/rnn_valid_ts.pt')
+        train_len = torch.load('/data/r06942052/rnn_train_len.pt')
+        valid_len = torch.load('/data/r06942052/rnn_valid_len.pt')
+    else: 
+        train_ts, train_len = Video2Seq(train_path, train_category, train_name)
+        valid_ts, valid_len = Video2Seq(valid_path, valid_category, valid_name)
+        torch.save(train_ts, '/data/r06942052/rnn_train_ts.pt')
+        torch.save(valid_ts, '/data/r06942052/rnn_valid_ts.pt')
+        torch.save(train_len, '/data/r06942052/rnn_train_len.pt')
+        torch.save(valid_len, '/data/r06942052/rnn_valid_len.pt')
+
+    train_set = Data.TensorDataset(train_ts, torch.Tensor(train_len).long(), train_tag.long())
+    valid_set = Data.TensorDataset(valid_ts, torch.Tensor(valid_len).long(), valid_tag.long())
 
     trainloader = Data.DataLoader(dataset=train_set, batch_size=batch_size) 
     validloader = Data.DataLoader(dataset=valid_set, batch_size=batch_size) 
-
-    Net = FC_for_C(n_classes)
+     
+    rnn = RNN(n_classes)
     Net.cuda()
     Net.train()
     Net.weight_init(mean=0.0, std=0.02)
@@ -123,6 +157,12 @@ if __name__=='__main__':
     training_time = time.time()
     for epoch in range(epochs): 
         start_time = time.time()
+    sort_index_t = np.argsort(train_len)
+    sort_index_v = np.argsort(valid_len)
+    train_ts = train_ts[sort_index_t, :]
+    valid_ts = valid_ts[sort_index_v, :]
+    train_pack = nn_utils.rnn.pack_padded_sequence(train_ts, np.sort(train_len), batch_first=True)
+    valid_pack = nn_utils.rnn.pack_padded_sequence(valid_ts, np.sort(valid_len), batch_first=True)
         for batch_idx, (b_feature, b_tag) in enumerate(trainloader):
             optimizer.zero_grad()
             train_loss = criterion(Net(b_feature.cuda()), b_tag.cuda()) 
