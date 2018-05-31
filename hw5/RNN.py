@@ -4,7 +4,7 @@
  # File Name : RNN.py
  # Purpose : Use RNN structure to classify the video 
  # Creation Date : 2018年05月30日 (週三) 15時44分46秒
- # Last Modified : 廿十八年五月卅一日 (週四) 廿時廿分八秒
+ # Last Modified : 2018年05月31日 (週四) 21時09分02秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -44,7 +44,7 @@ class RNN(nn.Module):
             batch_first = True
         )
 
-        self.fc1 = nn.Linear(500, 250)
+        self.fc1 = nn.Linear(hidden_size, 250)
         self.bn1 = nn.BatchNorm1d(250)
         self.drop1 = nn.Dropout(0.2)
         self.fc2 = nn.Linear(250, 125)
@@ -100,15 +100,16 @@ def Video2Seq(video_path, video_category, video_name):
 if __name__=='__main__': 
     epochs = 1000
     n_classes = 11
+    hidden_size = 500
     batch_size = 100
     boardX = False
-    presave_tensor = False 
+    presave_tensor = True
 
     if boardX:
         from tensorboardX import SummaryWriter
         writer = SummaryWriter('runs/'+sys.argv[1])
-    train_info = getVideoList('/mnt/data/r06942052/HW5_data/TrimmedVideos/label/gt_train.csv')
-    train_path = '/mnt/data/r06942052/HW5_data/TrimmedVideos/video/train'
+    train_info = getVideoList('/data/r06942052/HW5_data/TrimmedVideos/label/gt_train.csv')
+    train_path = '/data/r06942052/HW5_data/TrimmedVideos/video/train'
     train_category = train_info['Video_category']
     train_name = train_info['Video_name']
     train_tag = np.array(train_info['Action_labels']).astype('float') 
@@ -116,8 +117,8 @@ if __name__=='__main__':
     del train_info
     
 
-    valid_info = getVideoList('/mnt/data/r06942052/HW5_data/TrimmedVideos/label/gt_valid.csv')
-    valid_path = '/mnt/data/r06942052/HW5_data/TrimmedVideos/video/valid'
+    valid_info = getVideoList('/data/r06942052/HW5_data/TrimmedVideos/label/gt_valid.csv')
+    valid_path = '/data/r06942052/HW5_data/TrimmedVideos/video/valid'
     valid_category = valid_info['Video_category']
     valid_name = valid_info['Video_name']
     valid_tag = np.array(valid_info['Action_labels']).astype('float') 
@@ -125,17 +126,17 @@ if __name__=='__main__':
     del valid_info
 
     if presave_tensor:
-        train_ts = torch.load('/mnt/data/r06942052/rnn_train_ts.pt')
-        valid_ts = torch.load('/mnt/data/r06942052/rnn_valid_ts.pt')
-        train_len = torch.load('/mnt/data/r06942052/rnn_train_len.pt')
-        valid_len = torch.load('/mnt/data/r06942052/rnn_valid_len.pt')
+        train_ts = torch.load('/data/r06942052/rnn_train_ts.pt')
+        valid_ts = torch.load('/data/r06942052/rnn_valid_ts.pt')
+        train_len = torch.load('/data/r06942052/rnn_train_len.pt')
+        valid_len = torch.load('/data/r06942052/rnn_valid_len.pt')
     else: 
         train_ts, train_len = Video2Seq(train_path, train_category, train_name)
         valid_ts, valid_len = Video2Seq(valid_path, valid_category, valid_name)
-        torch.save(train_ts, '/mnt/data/r06942052/rnn_train_ts.pt')
-        torch.save(valid_ts, '/mnt/data/r06942052/rnn_valid_ts.pt')
-        torch.save(train_len, '/mnt/data/r06942052/rnn_train_len.pt')
-        torch.save(valid_len, '/mnt/data/r06942052/rnn_valid_len.pt')
+        torch.save(train_ts, '/data/r06942052/rnn_train_ts.pt')
+        torch.save(valid_ts, '/data/r06942052/rnn_valid_ts.pt')
+        torch.save(train_len, '/data/r06942052/rnn_train_len.pt')
+        torch.save(valid_len, '/data/r06942052/rnn_valid_len.pt')
 
     train_set = Data.TensorDataset(train_ts, torch.Tensor(train_len).long(), train_tag.long())
     valid_set = Data.TensorDataset(valid_ts, torch.Tensor(valid_len).long(), valid_tag.long())
@@ -143,7 +144,7 @@ if __name__=='__main__':
     trainloader = Data.DataLoader(dataset=train_set, batch_size=batch_size) 
     validloader = Data.DataLoader(dataset=valid_set, batch_size=batch_size) 
      
-    rnn = RNN(n_classes)
+    rnn = RNN(n_classes, hidden_size)
     rnn.cuda()
     rnn.train()
     rnn.weight_init(mean=0.0, std=0.02)
@@ -161,12 +162,13 @@ if __name__=='__main__':
         for batch_idx, (b_feature, b_len, b_tag) in enumerate(trainloader):
             
             seq_len = b_len.tolist()
-            sort_index = np.argsort(seq_len)
-            b_feature = b_feature[sort_index, :]
-            pack = nn_utils.rnn.pack_padded_sequence(b_feature.cuda(), np.sort(seq_len), batch_first=True)
+            sort_index = np.argsort(seq_len)[::-1]
+            b_feature = b_feature[sort_index.tolist(), :, :]
+            pack = nn_utils.rnn.pack_padded_sequence(b_feature.cuda(),
+                            np.sort(seq_len)[::-1], batch_first=True)
             
             optimizer.zero_grad()
-            train_loss = criterion(rnn(pack, h_state), b_tag.cuda()) 
+            train_loss = criterion(rnn(pack, h_state)[0], b_tag.cuda()) 
             train_loss.backward()
             optimizer.step()
 
@@ -184,10 +186,11 @@ if __name__=='__main__':
         h_state = None
         for batch_idx, (b_feature, b_len, b_tag) in enumerate(validloader):
             seq_len = b_len.tolist()
-            sort_index = np.argsort(seq_len)
-            b_feature = b_feature[sort_index, :]
-            pack = nn_utils.rnn.pack_padded_sequence(b_feature.cuda(), np.sort(seq_len), batch_first=True)
-            result = torch.argmax(rnn(pack, h_state).detach(), 1).cpu()
+            sort_index = np.argsort(seq_len)[::-1]
+            b_feature = b_feature[sort_index.tolist(), :, :]
+            pack = nn_utils.rnn.pack_padded_sequence(b_feature.cuda(),
+                            np.sort(seq_len)[::-1], batch_first=True)
+            result = torch.argmax(rnn(pack, h_state).detach()[0], 1).cpu()
             v_accuracy += torch.sum(result == b_tag)
 
         v_accuracy = v_accuracy.float() / len(validloader.dataset) * 100
