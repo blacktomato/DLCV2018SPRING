@@ -4,7 +4,7 @@
  # File Name : RNN.py
  # Purpose : Use RNN structure to classify the video 
  # Creation Date : 2018年05月30日 (週三) 15時44分46秒
- # Last Modified : 2018年05月30日 (週三) 15時46分54秒
+ # Last Modified : Thu 31 May 2018 02:17:09 AM CST
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -53,21 +53,20 @@ def normal_init(m, mean, std):
         m.weight.data.normal_(mean, std)
         m.bias.data.zero_()
 
-def Video2Tensor(video_path, video_category, video_name):
+def Video2Seq(video_path, video_category, video_name, longest_length):
     features = torch.Tensor()
     for i in range(len(video_name)):
         frames = readShortVideo(video_path, video_category[i], video_name[i])
         ts_frames = torch.from_numpy(frames.transpose((0, 3, 1, 2))).float()/ 255.
-        sys.stdout.write('\rReading the Video... Frame: {:}'.format(i))
+        sys.stdout.write('\rReading the Video... : {:}'.format(i))
         sys.stdout.flush()
         set = Data.TensorDataset(ts_frames)
 
-        dataloader = Data.DataLoader(dataset=set, 
-                                    batch_size=1) 
-        feature = torch.zeros(1,1000).cuda()
+        dataloader = Data.DataLoader(dataset=set) 
+        feature = torch.zeros(longest_length, 1000).cuda()
         for batch_idx, b_frame in enumerate(dataloader):
-            feature += resnet50(b_frame[0].cuda()).detach()
-        features = torch.cat([features, (feature/len(set)).cpu()])
+            feature[batch_idx] = resnet50(b_frame[0].cuda()).detach()
+        features = torch.cat([features, feature.cpu()])
     sys.stdout.write('... Done\n')
     sys.stdout.flush()
     return features
@@ -88,10 +87,9 @@ if __name__=='__main__':
     train_tag = np.array(train_info['Action_labels']).astype('float') 
     train_tag = torch.from_numpy(train_tag)
     del train_info
-    '''
-    train_ts = Video2Tensor(train_path, train_category, train_name)
-    torch.save(train_ts, '/data/r06942052/train_ts.pt')
-    '''
+    train_ts = Video2Seq(train_path, train_category, train_name, train_longest)
+    torch.save(train_ts, '/data/r06942052/rnn_train_ts.pt')
+
     valid_info = getVideoList('/data/r06942052/HW5_data/TrimmedVideos/label/gt_valid.csv')
     valid_path = '/data/r06942052/HW5_data/TrimmedVideos/video/valid'
     valid_category = valid_info['Video_category']
@@ -99,13 +97,12 @@ if __name__=='__main__':
     valid_tag = np.array(valid_info['Action_labels']).astype('float') 
     valid_tag = torch.from_numpy(valid_tag)
     del valid_info
-    '''
-    valid_ts = Video2Tensor(valid_path, valid_category, valid_name)
-    torch.save(valid_ts, '/data/r06942052/valid_ts.pt')
+    valid_ts = Video2Tensor(valid_path, valid_category, valid_name, valid_longest)
+    torch.save(valid_ts, '/data/r06942052/rnn_valid_ts.pt')
     '''
     train_ts = torch.load('/data/r06942052/train_ts.pt')
     valid_ts = torch.load('/data/r06942052/valid_ts.pt')
-
+    '''
     train_set = Data.TensorDataset(train_ts, train_tag.long())
     valid_set = Data.TensorDataset(valid_ts, valid_tag.long())
 
