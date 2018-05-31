@@ -4,7 +4,7 @@
  # File Name : ResNet_test.py
  # Purpose : Test the Feature and FC for classification
  # Creation Date : 2018年05月30日 (週三) 15時55分47秒
- # Last Modified : 2018年05月30日 (週三) 18時12分16秒
+ # Last Modified : 2018年05月31日 (週四) 19時45分18秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -57,12 +57,12 @@ if __name__=='__main__':
     
     with open(os.path.join(sys.argv[4], 'p1_valid.txt'), 'w+') as f:
         for batch_idx, (b_feature, b_tag) in enumerate(validloader):
-            result = torch.argmax(Net(b_feature.cuda()).detach(), 1).cpu()
+            result = torch.argmax(Net(b_feature.cuda()).detach(), 1).cpu().numpy()
             for i in range(len(result)):
-                f.write(result[i]+'\n')
+                f.write(str(result[i])+'\n')
             v_accuracy += torch.sum(result == b_tag)
 
-        v_accuracy = v_accuracy.float() / len(validloader.dataset) * 100
-        print('Accuracy for Validation Set: ', v_accuracy)
+    v_accuracy = v_accuracy.float() / len(validloader.dataset) * 100
+    print('Accuracy for Validation Set:', v_accuracy.item())
             
-    print('Total training:{:.1f}'.format(time.time() - start_time))
+    print('Total time:{:.1f}'.format(time.time() - start_time))
