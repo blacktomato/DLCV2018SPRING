@@ -4,7 +4,7 @@
  # File Name : RNN.py
  # Purpose : Use RNN structure to classify the video 
  # Creation Date : 2018年05月30日 (週三) 15時44分46秒
- # Last Modified : 2018年05月31日 (週四) 18時29分22秒
+ # Last Modified : 廿十八年五月卅一日 (週四) 十九時55分51秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -35,11 +35,11 @@ resnet50.cuda()
 resnet50.eval()
 
 class RNN(nn.Module):
-    def __init__(self, n_classes):
+    def __init__(self, n_classes, hidden_size):
         super(RNN, self).__init__()
         self.rnn = nn.RNN(
             input_size = 1000,
-            hidden_size = 500,
+            hidden_size = hidden_size,
             num_layers = 6,
             batch_first = True
         )
@@ -59,7 +59,7 @@ class RNN(nn.Module):
         x, h_state = self.rnn(features, h_state)
         x = F.leaky_relu(self.bn1(x))
         x = F.leaky_relu(self.drop1(self.bn2(self.fc2(x))))
-        return F.softmax(self.fc3(x)), h_state
+        return F.softmax(self.fc3(x), dim=-1), h_state
 
 def normal_init(m, mean, std):
     if isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Conv2d):
@@ -98,7 +98,7 @@ def Video2Seq(video_path, video_category, video_name):
     return seq, seq_length 
 
 if __name__=='__main__': 
-    epochs = 2000
+    epochs = 1000
     n_classes = 11
     batch_size = 100
     boardX = False
@@ -144,12 +144,12 @@ if __name__=='__main__':
     validloader = Data.DataLoader(dataset=valid_set, batch_size=batch_size) 
      
     rnn = RNN(n_classes)
-    Net.cuda()
-    Net.train()
-    Net.weight_init(mean=0.0, std=0.02)
+    rnn.cuda()
+    rnn.train()
+    rnn.weight_init(mean=0.0, std=0.02)
 
     criterion = nn.CrossEntropyLoss().cuda()
-    optimizer = optim.Adam(Net.parameters(), lr=1e-4, betas=(0.5,0.999))
+    optimizer = optim.Adam(rnn.parameters(), lr=1e-4, betas=(0.5,0.999))
 
     train_status = '\rEpoch:  {} [{}/{}] Train Loss: {:.3f} '
     valid_status = 'Valid Percentage: {:.3f}% ---> '
@@ -157,18 +157,18 @@ if __name__=='__main__':
     training_time = time.time()
     for epoch in range(epochs): 
         start_time = time.time()
-    sort_index_t = np.argsort(train_len)
-    sort_index_v = np.argsort(valid_len)
-    train_ts = train_ts[sort_index_t, :]
-    valid_ts = valid_ts[sort_index_v, :]
-    train_pack = nn_utils.rnn.pack_padded_sequence(train_ts, np.sort(train_len), batch_first=True)
-    valid_pack = nn_utils.rnn.pack_padded_sequence(valid_ts, np.sort(valid_len), batch_first=True)
-        for batch_idx, (b_feature, b_tag) in enumerate(trainloader):
+        h_state = None
+        for batch_idx, (b_feature, b_len, b_tag) in enumerate(trainloader):
+            
+            seq_len = b_len.tolist()
+            sort_index = np.argsort(seq_len)
+            b_feature = b_feature[sort_index, :]
+            pack = nn_utils.rnn.pack_padded_sequence(b_feature.cuda(), np.sort(seq_len), batch_first=True)
+            
             optimizer.zero_grad()
-            train_loss = criterion(Net(b_feature.cuda()), b_tag.cuda()) 
+            train_loss = criterion(rnn(pack, h_state), b_tag.cuda()) 
             train_loss.backward()
             optimizer.step()
-            
 
             if boardX:
                 writer.add_scalar('Train Loss', 
@@ -179,10 +179,15 @@ if __name__=='__main__':
                 train_loss))
 
         
-        Net.eval()
+        rnn.eval()
         v_accuracy = 0
-        for batch_idx, (b_feature, b_tag) in enumerate(validloader):
-            result = torch.argmax(Net(b_feature.cuda()).detach(), 1).cpu()
+        h_state = None
+        for batch_idx, (b_feature, b_len, b_tag) in enumerate(validloader):
+            seq_len = b_len.tolist()
+            sort_index = np.argsort(seq_len)
+            b_feature = b_feature[sort_index, :]
+            pack = nn_utils.rnn.pack_padded_sequence(b_feature.cuda(), np.sort(seq_len), batch_first=True)
+            result = torch.argmax(rnn(pack, h_state).detach(), 1).cpu()
             v_accuracy += torch.sum(result == b_tag)
 
         v_accuracy = v_accuracy.float() / len(validloader.dataset) * 100
