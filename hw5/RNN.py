@@ -4,7 +4,7 @@
  # File Name : RNN.py
  # Purpose : Use RNN structure to classify the video 
  # Creation Date : 2018年05月30日 (週三) 15時44分46秒
- # Last Modified : 2018年05月31日 (週四) 21時09分02秒
+ # Last Modified : 2018年06月02日 (週六) 01時41分36秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -35,21 +35,22 @@ resnet50.cuda()
 resnet50.eval()
 
 class RNN(nn.Module):
-    def __init__(self, n_classes, hidden_size):
+    def __init__(self, n_classes, hidden_size, num_layers):
         super(RNN, self).__init__()
-        self.rnn = nn.RNN(
+        self.rnn = nn.LSTM(
             input_size = 1000,
             hidden_size = hidden_size,
-            num_layers = 6,
+            num_layers = num_layers,
             batch_first = True
         )
-
-        self.fc1 = nn.Linear(hidden_size, 250)
-        self.bn1 = nn.BatchNorm1d(250)
-        self.drop1 = nn.Dropout(0.2)
-        self.fc2 = nn.Linear(250, 125)
-        self.bn2 = nn.BatchNorm1d(125)
-        self.fc3 = nn.Linear(125, n_classes)
+        self.hidden_size = hidden_size
+        self.fc1 = nn.Linear(hidden_size, hidden_size/2)
+        self.bn1 = nn.BatchNorm1d(hidden_size/2)
+        self.fc2 = nn.Linear(hidden_size/2, hidden_size/4)
+        self.bn2 = nn.BatchNorm1d(hidden_size/4)
+        self.fc3 = nn.Linear(hidden_size/4, hidden_size/8)
+        self.bn3 = nn.BatchNorm1d(hidden_size/8)
+        self.fc4 = nn.Linear(hidden_size/8, n_classes)
          
     def weight_init(self, mean, std):
         for m in self._modules:
@@ -57,9 +58,13 @@ class RNN(nn.Module):
 
     def forward(self, features, h_state):
         x, h_state = self.rnn(features, h_state)
-        x = F.leaky_relu(self.bn1(x))
-        x = F.leaky_relu(self.drop1(self.bn2(self.fc2(x))))
-        return F.softmax(self.fc3(x), dim=-1), h_state
+        x, l = nn_utils.rnn.pad_packed_sequence(x, batch_first=True)
+        pos = [(i * x.size(1) + l.tolist()[i] - 1) for i in range(x.size(0))]
+        x = x.cpu().view(-1, self.hidden_size).cuda()[pos]
+        x = F.leaky_relu(self.bn1(self.fc1(x)))
+        x = F.leaky_relu(self.bn2(self.fc2(x)))
+        x = F.leaky_relu(self.bn3(self.fc3(x)))
+        return F.softmax(self.fc4(x), dim=-1), h_state
 
 def normal_init(m, mean, std):
     if isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Conv2d):
@@ -76,14 +81,13 @@ def Video2Seq(video_path, video_category, video_name):
         sys.stdout.flush()
 
         set = Data.TensorDataset(ts_frames)
-
         dataloader = Data.DataLoader(dataset=set, 
                                     batch_size=3) 
 
         seq_length.append(0)
         for batch_idx, b_frame in enumerate(dataloader):
             features = torch.cat([features, resnet50(b_frame[0].cuda()).detach().cpu()])
-            seq_length[i] += 1
+            seq_length[i] += len(b_frame[0]) 
 
     max_length = max(seq_length)
     seq = torch.zeros(len(seq_length), max_length, features.shape[1])
@@ -98,11 +102,12 @@ def Video2Seq(video_path, video_category, video_name):
     return seq, seq_length 
 
 if __name__=='__main__': 
-    epochs = 1000
+    epochs = 100
     n_classes = 11
-    hidden_size = 500
+    hidden_size = 1000
     batch_size = 100
-    boardX = False
+    num_layers = 1
+    boardX = True
     presave_tensor = True
 
     if boardX:
@@ -144,9 +149,8 @@ if __name__=='__main__':
     trainloader = Data.DataLoader(dataset=train_set, batch_size=batch_size) 
     validloader = Data.DataLoader(dataset=valid_set, batch_size=batch_size) 
      
-    rnn = RNN(n_classes, hidden_size)
+    rnn = RNN(n_classes, hidden_size, num_layers)
     rnn.cuda()
-    rnn.train()
     rnn.weight_init(mean=0.0, std=0.02)
 
     criterion = nn.CrossEntropyLoss().cuda()
@@ -159,16 +163,18 @@ if __name__=='__main__':
     for epoch in range(epochs): 
         start_time = time.time()
         h_state = None
+        rnn.train()
         for batch_idx, (b_feature, b_len, b_tag) in enumerate(trainloader):
-            
             seq_len = b_len.tolist()
             sort_index = np.argsort(seq_len)[::-1]
-            b_feature = b_feature[sort_index.tolist(), :, :]
+            b_feature = b_feature[sort_index.tolist(), 0:max(seq_len), :]
+            b_tag = b_tag[sort_index.tolist()]
             pack = nn_utils.rnn.pack_padded_sequence(b_feature.cuda(),
                             np.sort(seq_len)[::-1], batch_first=True)
             
             optimizer.zero_grad()
-            train_loss = criterion(rnn(pack, h_state)[0], b_tag.cuda()) 
+            result, _ = rnn(pack, h_state)
+            train_loss = criterion(result, b_tag.cuda()) 
             train_loss.backward()
             optimizer.step()
 
@@ -179,19 +185,25 @@ if __name__=='__main__':
             sys.stdout.write(train_status.format( 
                 epoch+1, batch_idx * batch_size + len(b_tag), len(trainloader.dataset), 
                 train_loss))
-
-        
+        #Validation
         rnn.eval()
         v_accuracy = 0
         h_state = None
         for batch_idx, (b_feature, b_len, b_tag) in enumerate(validloader):
             seq_len = b_len.tolist()
             sort_index = np.argsort(seq_len)[::-1]
-            b_feature = b_feature[sort_index.tolist(), :, :]
+            b_feature = b_feature[sort_index.tolist(), 0:max(seq_len), :]
+            b_tag = b_tag[sort_index.tolist()]
             pack = nn_utils.rnn.pack_padded_sequence(b_feature.cuda(),
                             np.sort(seq_len)[::-1], batch_first=True)
-            result = torch.argmax(rnn(pack, h_state).detach()[0], 1).cpu()
-            v_accuracy += torch.sum(result == b_tag)
+
+            result = rnn(pack, h_state)[0].detach()
+            valid_loss = criterion(result, b_tag.cuda())
+            v_accuracy += torch.sum(torch.argmax(result, 1).cpu() == b_tag)
+            if boardX:
+                writer.add_scalar('Valid Loss', 
+                valid_loss,
+                epoch*len(trainloader.dataset)/batch_size+batch_idx)
 
         v_accuracy = v_accuracy.float() / len(validloader.dataset) * 100
         if boardX:
@@ -199,6 +211,8 @@ if __name__=='__main__':
             v_accuracy,
             epoch*len(trainloader.dataset)/batch_size)
         sys.stdout.write(valid_status.format(v_accuracy))
-                
         sys.stdout.write('Times:{:.1f}\n'.format(time.time() - start_time))
+
     print('Total training:{:.1f}'.format(time.time() - training_time))
+    print('Saving model...')
+    torch.save(rnn, 'RNN.pt')
