@@ -4,7 +4,7 @@
  # File Name : RNN_test.py
  # Purpose : Test the RNN model
  # Creation Date : 2018年06月02日 (週六) 14時48分29秒
- # Last Modified : 2018年06月02日 (週六) 16時03分48秒
+ # Last Modified : 2018年06月02日 (週六) 16時15分46秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -36,6 +36,7 @@ resnet50.cuda()
 resnet50.eval()
 
 if __name__=='__main__': 
+    start_time = time.time()
     batch_size = 100
 
     video_info = getVideoList(sys.argv[3])
@@ -52,8 +53,6 @@ if __name__=='__main__':
      
     rnn = torch.load(sys.argv[1]) 
     rnn.cuda()
-
-    start_time = time.time()
 
     #Testing
     rnn.eval()
@@ -77,7 +76,6 @@ if __name__=='__main__':
             result = result[np.argsort(sort_index)].numpy()
             for i in range(len(result)):
                 f.write(str(result[i])+'\n')
-            v_accuracy += torch.sum(result == b_tag)
 
         v_accuracy = v_accuracy.float() / len(videoloader.dataset) * 100
 
