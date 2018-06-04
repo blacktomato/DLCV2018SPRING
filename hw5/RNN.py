@@ -4,7 +4,7 @@
  # File Name : RNN.py
  # Purpose : Use RNN structure to classify the video 
  # Creation Date : 2018年05月30日 (週三) 15時44分46秒
- # Last Modified : 2018年06月02日 (週六) 15時02分46秒
+ # Last Modified : 2018年06月04日 (週一) 19時12分20秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -57,14 +57,16 @@ class RNN(nn.Module):
             normal_init(self._modules[m], mean, std)
 
     def forward(self, features, h_state):
-        x, h_state = self.rnn(features, h_state)
+        x, (h_s, c_s) = self.rnn(features, h_state)
+        '''
         x, l = nn_utils.rnn.pad_packed_sequence(x, batch_first=True)
         pos = [(i * x.size(1) + l.tolist()[i] - 1) for i in range(x.size(0))]
         x = x.cpu().view(-1, self.hidden_size).cuda()[pos]
-        x = F.leaky_relu(self.bn1(self.fc1(x)))
+        '''
+        x = F.leaky_relu(self.bn1(self.fc1(h_s[0])))
         x = F.leaky_relu(self.bn2(self.fc2(x)))
         x = F.leaky_relu(self.bn3(self.fc3(x)))
-        return F.softmax(self.fc4(x), dim=-1), h_state
+        return F.softmax(self.fc4(x), dim=-1), h_s
 
 def normal_init(m, mean, std):
     if isinstance(m, nn.ConvTranspose2d) or isinstance(m, nn.Conv2d):
@@ -107,7 +109,7 @@ if __name__=='__main__':
     hidden_size = 1000
     batch_size = 100
     num_layers = 1
-    boardX = True
+    boardX = False
     presave_tensor = True
 
     if boardX:

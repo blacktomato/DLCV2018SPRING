@@ -4,7 +4,7 @@
  # File Name : RNN_test.py
  # Purpose : Test the RNN model
  # Creation Date : 2018年06月02日 (週六) 14時48分29秒
- # Last Modified : 2018年06月02日 (週六) 16時15分46秒
+ # Last Modified : 2018年06月04日 (週一) 19時15分18秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -67,8 +67,8 @@ if __name__=='__main__':
             b_tag = b_tag[sort_index.tolist()]
             pack = nn_utils.rnn.pack_padded_sequence(b_feature.cuda(),
                             np.sort(seq_len)[::-1], batch_first=True)
-
-            result = rnn(pack, h_state)[0].detach()
+            result, h_s = rnn(pack, h_state)
+            result = result.detach()
             result = torch.argmax(result, 1).cpu()
             v_accuracy += torch.sum(result == b_tag)
            
