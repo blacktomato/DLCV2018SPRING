@@ -4,7 +4,7 @@
  # File Name : RNN_S2S.py
  # Purpose : Train a RNN Model for Sequence to Sequence Task
  # Creation Date : 2018年06月02日 (週六) 16時09分03秒
- # Last Modified : 2018年06月03日 (週日) 02時06分26秒
+ # Last Modified : 2018年06月04日 (週一) 22時50分25秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -78,7 +78,7 @@ def Videos2Seqs(video_path):
     for i, dir in enumerate(dirs): 
         frames = readImgSeq(os.path.join(video_path, dir))
         ts_frames = torch.from_numpy(frames.transpose((0, 3, 1, 2))).float()/ 255.
-        sys.stdout.write('\rReading the Video... : {:}'.format(i))
+        sys.stdout.write('\rReading the Video... : {:}'.format(i+1))
         sys.stdout.flush()
 
         set = Data.TensorDataset(ts_frames)
@@ -101,7 +101,7 @@ def readLabel(label_path):
         with open(os.path.join(label_path, txt), 'r') as f:
             label = f.read().splitlines()
         label = np.array(label).astype('int8')
-        sys.stdout.write('\rReading the Label... : {:}'.format(i))
+        sys.stdout.write('\rReading the Label... : {:}'.format(i+1))
         sys.stdout.flush()
         labels.append(label)
 
@@ -116,7 +116,7 @@ if __name__=='__main__':
     batch_size = 100
     num_layers = 1
     boardX = False
-    presave_tensor = False 
+    presave_tensor = True 
 
     if boardX:
         from tensorboardX import SummaryWriter
