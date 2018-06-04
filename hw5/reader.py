@@ -1,5 +1,6 @@
 import numpy as np
 import skvideo.io
+import skimage.io
 import skimage.transform
 import csv
 import collections
@@ -24,13 +25,28 @@ def readShortVideo(video_path, video_category, video_name, downsample_factor=12,
     frames = []
     for frameIdx, frame in enumerate(videogen):
         if frameIdx % downsample_factor == 0:
-            frame = skimage.transform.resize(frame, (224,224), mode='constant', preserve_range=True).astype(np.uint8)
+            frame = skimage.transform.resize(frame, (224,224), 
+                        mode='constant', preserve_range=True).astype(np.uint8)
             frames.append(frame)
         else:
             continue
 
     return np.array(frames).astype(np.uint8)
 
+
+def readImgSeq(seq_path):
+    '''
+    @param sep_path: sequence directory
+    @return: frames in a diretory 
+    '''
+    frames = []
+    imgs = [img for img in os.listdir(seq_path)]
+    for img in imgs:
+        frame = skimage.io.imread(os.path.join(seq_path, img))
+        frame = skimage.transform.resize(frame, (224,224), 
+                    mode='constant', preserve_range=True).astype(np.uint8)
+        frames.append(frame)
+    return np.array(frames).astype(np.uint8)
 
 def getVideoList(data_path):
     '''
