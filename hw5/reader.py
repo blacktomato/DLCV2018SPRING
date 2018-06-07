@@ -41,6 +41,7 @@ def readImgSeq(seq_path):
     '''
     frames = []
     imgs = [img for img in os.listdir(seq_path)]
+    imgs.sort()
     for img in imgs:
         frame = skimage.io.imread(os.path.join(seq_path, img))
         frame = skimage.transform.resize(frame, (224,224), 
