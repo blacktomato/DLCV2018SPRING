@@ -4,7 +4,7 @@
  # File Name : RNN_S2S_test.py
  # Purpose : Test the S2S model
  # Creation Date : 2018年06月08日 (週五) 21時11分22秒
- # Last Modified : 2018年06月08日 (週五) 21時26分38秒
+ # Last Modified : 2018年06月09日 (週六) 00時32分31秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -36,6 +36,9 @@ if __name__=='__main__':
     start_time = time.time()
     valid_path = sys.argv[3]
     valid_ts_l = Videos2Seqs(valid_path)
+    ACC = False
+    if ACC:
+        valid_tag_l = readLabel('/data/r06942052/HW5_data/FullLengthVideos/labels/valid') 
     
     rnn = torch.load(sys.argv[1])
     cnn = torch.load(sys.argv[2])
@@ -49,22 +52,27 @@ if __name__=='__main__':
     valid_loss = 0
     h_state = None
     total = 0
+    video_category=os.listdir(valid_path)
+    video_category.sort()
     for i in range(len(valid_ts_l)):
         total += len(valid_ts_l[i])
 
         h = rnn(valid_ts_l[i].view(1, -1, 1000).cuda(), h_state).detach()
-        h = h.cpu().view(-1, input_size).cuda()
+        h = h.cpu().view(-1, 2000).cuda()
         result = cnn(h).detach()
+        result = torch.argmax(result, 1).cpu()
 
-        valid_loss += criterion(result, valid_tag_l[i].long().cuda())
-        accuracy += torch.sum(torch.argmax(result, 1).cpu() == valid_tag_l[i].long())
-        v_accuracy += accuracy
-        print('Video {}: {:.3f}%\n'.format(i+1, accuracy.float()/len(valid_ts_l[i])*100))
-        with open(os.path.join(sys.argv[4], '.txt'), 'w+') as f:
+        if ACC:
+            accuracy = torch.sum(result == valid_tag_l[i].long())
+            v_accuracy += accuracy
+            print('Video {}: {:.3f}%'.format(i+1, accuracy.float()/len(valid_ts_l[i])*100))
+        result = result.numpy() 
+        with open(os.path.join(sys.argv[4], video_category[i]+'.txt'), 'w+') as f:
             for i in range(len(result)):
                 f.write(str(result[i])+'\n')
 
-    v_accuracy = v_accuracy.float() / total * 100
-    print('\nAverage: {:.3f}%\n'.format(v_accuracy))
+    if ACC:
+        v_accuracy = v_accuracy.float() / total * 100
+        print('\nAverage: {:.3f}%\n'.format(v_accuracy))
         
     print('Total testing: {:.1f} second'.format(time.time() - start_time))
