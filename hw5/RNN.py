@@ -4,7 +4,7 @@
  # File Name : RNN.py
  # Purpose : Use RNN structure to classify the video 
  # Creation Date : 2018年05月30日 (週三) 15時44分46秒
- # Last Modified : 2018年06月04日 (週一) 19時12分20秒
+ # Last Modified : 2018年06月08日 (週五) 17時18分19秒
  # Created By : SL Chung
 ##############################################################
 import sys
