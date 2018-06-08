@@ -4,7 +4,7 @@
  # File Name : ResNet.py
  # Purpose : Classification with ResNet feature
  # Creation Date : 廿十八年五月廿四日 (週四) 十五時廿一分九秒
- # Last Modified : 2018年05月31日 (週四) 19時20分06秒
+ # Last Modified : 2018年06月08日 (週五) 15時43分25秒
  # Created By : SL Chung
 ##############################################################
 import sys
@@ -83,7 +83,7 @@ if __name__=='__main__':
     epochs = 2000
     n_classes = 11
     batch_size = 100
-    boardX = True
+    boardX = False
 
     if boardX:
         from tensorboardX import SummaryWriter
