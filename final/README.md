@@ -1,32 +1,51 @@
 # DLCV_FinalProject
-DLCV_FinalProject
+
+## Required Package
+
+* Numpy
+* pytorch
+* torchvision
+* pickle
+* PIL
+* Scipy
+* tqdm
+* argparse
 
 ## Usage
-### Preproccessing (save data as npz file)
-1. download dlcv_final_2_dataset.tar.gz to DLCV_FinalProject
-2. Save npz file at preproc_data
+Execute the following command to test the compact model for face recognition on the validation dataset and predict on the test dataset.
 ```
-./preproc_script.sh
+bash final.sh $1 $2 $3 $4
+
+    $1: the compact model
+    
+        ┌─ depth_fire.pth
+        └─ quantized_depth_fire.pth
+        
+    $2: path to the dataset of 2018-spring-dlcv-final-project-2
+    
+        $2
+        ├─ test
+        ├─ train
+        ├─ train.txt
+        ├─ val
+        └─ val.txt
+        
+    
+    $3: path to the test dataset
+    
+        $3
+        ├─ 00001.jpg
+        ├─ 00002.jpg
+        │       .
+        │       .
+        │       .
+        │       .
+        ├─ 07151.jpg
+        └─ 07152.jpg
+    
+    $4: output csv file of the prediction of test dataset
 ```
-### Training basic model (without compression)
-```
-python3 basic_train.p -b <batch_size> -d <GPU device id> -m <saved/model/path>
-    -m <file>
-        default: 'saved_model/basic.model'
-    -b <batch size>
-        default: 32
-    -d <GPU device>
-        default: 0'
-```
-### Testing trained model
-```
-python3 test.py -i <test/img/dir/> -m <trained/model/path> -o <output/csv/path>
-    -i <file>
-        Read testing image from <file>
-        default: 'dataset/test'
-    -m <file>
-        Read trained model
-    -o <file>
-        Output csv result path
-        default: 'result/result.csv'
-```
+
+## Reference
+1. "Squeeznet: Alexnet-level Accuracy with 50X fewer parameters and < 0.5 MB model size", Forrest N. landola et al., ICLR 2017
+2. "MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications", Andrew G. Howard et al., CoRR, abs/1704.04861, 2017
