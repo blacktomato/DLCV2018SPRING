@@ -6,3 +6,4 @@
 * Hw3: Fully Convolutional Network for Semantic Segmentation
 * Hw4: Variational Autoencoder & Generative Adversarial Network (DCGAN & ACGAN)
 * Hw5: Mixed Model of CNN and RNN for Sequence to Sequence Video Tags Prediction 
+* Final: **Squeeze the Net!** _ Train a compact network for face recognition task
