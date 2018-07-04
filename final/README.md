@@ -1,32 +1,17 @@
 # DLCV_FinalProject
-DLCV_FinalProject
 
 ## Usage
-### Preproccessing (save data as npz file)
-1. download dlcv_final_2_dataset.tar.gz to DLCV_FinalProject
-2. Save npz file at preproc_data
 ```
-./preproc_script.sh
+bash final.sh $1 $2 $3 $4
+
+    $1: the compact model
+    
+    
+    
+    $2
+    $3
+    $4
 ```
-### Training basic model (without compression)
-```
-python3 basic_train.p -b <batch_size> -d <GPU device id> -m <saved/model/path>
-    -m <file>
-        default: 'saved_model/basic.model'
-    -b <batch size>
-        default: 32
-    -d <GPU device>
-        default: 0'
-```
-### Testing trained model
-```
-python3 test.py -i <test/img/dir/> -m <trained/model/path> -o <output/csv/path>
-    -i <file>
-        Read testing image from <file>
-        default: 'dataset/test'
-    -m <file>
-        Read trained model
-    -o <file>
-        Output csv result path
-        default: 'result/result.csv'
-```
+## Reference
+1. "Squeeznet: Alexnet-level Accuracy with 50X fewer parameters and < 0.5 MB model size", Forrest N. landola et al., ICLR 2017
+2. "MobileNets: Efficient Convolutional Neural Networks for Mobile Vision Applications", Andrew G. Howard et al., CoRR, abs/1704.04861, 2017
